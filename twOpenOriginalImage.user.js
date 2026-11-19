@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.24
+// @version         0.1.25
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
@@ -4918,17 +4918,51 @@ function initialize( user_options ) {
     
     
     function update_display_mode() {
-        if ( is_night_mode() ) {
-            d.body.setAttribute( 'data-nightmode', 'true' );
-        }
-        else {
-            d.body.setAttribute( 'data-nightmode', 'false' );
+        var mode = is_night_mode() ? 'true' : 'false';
+        
+        if ( d.body.getAttribute( 'data-nightmode' ) !== mode ) {
+            d.body.setAttribute( 'data-nightmode', mode );
         }
     } // end of update_display_mode()
     
     
     function start_mutation_observer() {
+        var react_check_scheduled = false,
+            react_check_last = 0,
+            REACT_CHECK_MIN_INTERVAL = 100, // ms: X mutates the DOM constantly; scan at most ~10x per second
+            
+            run_react_check = () => {
+                react_check_scheduled = false;
+                react_check_last = performance.now();
+                
+                if ( ! is_valid_url() ) {
+                    return;
+                }
+                update_display_mode();
+                stop_observe();
+                try {
+                    check_tweets( d.body );
+                    check_help_dialog( d.body );
+                }
+                finally {
+                    start_observe();
+                }
+            },
+            
+            schedule_react_check = () => {
+                if ( react_check_scheduled ) {
+                    return;
+                }
+                react_check_scheduled = true;
+                setTimeout( run_react_check, Math.max( 0, REACT_CHECK_MIN_INTERVAL - ( performance.now() - react_check_last ) ) );
+            };
+        
         var observer = new MutationObserver( function ( records ) {
+                if ( is_react_page() ) {
+                    schedule_react_check();
+                    return;
+                }
+                
                 if ( ! is_valid_url() ) { // ※ History API によりページ遷移無しで移動する場合もあるので毎回チェック
                     return;
                 }
@@ -5434,13 +5468,13 @@ async function init_gm_menu() {
             var save_status = ( GM_config.frame.contentDocument || GM_config.frame.ownerDocument ).querySelector( `#${config_id}_save-status` ),
                 current_value_map = get_config_value_map( true );
             
-            if ( 0 < get_diff_values( saved_value_map, current_value_map ).length ) {
-                save_status.textContent = messages.NOT_SAVED;
-                save_status.classList.add( 'warning' );
-            }
-            else {
-                save_status.textContent = '';
-                save_status.classList.remove( 'warning' );
+            var dirty = 0 < get_diff_values( saved_value_map, current_value_map ).length,
+                save_button = save_status.ownerDocument.querySelector( `#${config_id}_saveBtn` );
+            
+            save_status.textContent = dirty ? messages.NOT_SAVED : '';
+            save_status.classList.toggle( 'warning', dirty );
+            if ( save_button ) {
+                save_button.disabled = ! dirty;
             }
         };
     
@@ -5493,7 +5527,6 @@ async function init_gm_menu() {
                 "NOT_SAVED": "未保存",
                 "APPEARANCE": "外観",
                 "UI_THEME": "テーマ",
-                "UI_GLASS": "半透明（背景を透かす）",
                 "THEME_AUTO": "自動（システム）",
                 "THEME_DARK": "ダーク",
                 "THEME_LIGHT": "ライト",
@@ -5552,7 +5585,6 @@ async function init_gm_menu() {
                 "NOT_SAVED": "Not saved",
                 "APPEARANCE": "Appearance",
                 "UI_THEME": "Theme",
-                "UI_GLASS": "See-through panel (glass)",
                 "THEME_AUTO": "Auto (system)",
                 "THEME_DARK": "Dark",
                 "THEME_LIGHT": "Light",
@@ -5564,6 +5596,49 @@ async function init_gm_menu() {
             break;
     }
 
+    // Settings dialog labels (short and clear)
+    Object.assign( messages, ( language == 'ja' ) ? {
+        "SEC_CLICK": "クリック動作",
+        "SEC_VIEWER": "表示",
+        "SEC_BUTTON": "ボタン",
+        "SEC_DOWNLOAD": "ダウンロード",
+        "SEC_GENERAL": "全般",
+        "DEFAULT_ACTION_ON_CLICK_EVENT": "クリック",
+        "DEFAULT_ACTION_ON_ALT_CLICK_EVENT": "Alt + クリック",
+        "DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT": "Shift + クリック",
+        "DISPLAY_OVERLAY": "オーバーレイで開く（同じタブ）",
+        "OVERRIDE_CLICK_EVENT": "画像クリックで原寸画像を開く",
+        "SWAP_IMAGE_URL": "タイムラインの画像を原寸で読み込む（通信量増）",
+        "DISPLAY_ORIGINAL_BUTTONS": "ツイートにボタンを表示",
+        "BUTTON_TEXT_HEADER": "ボタンのテキスト",
+        "DOWNLOAD_HELPER_IS_VALID_HEADER": "画像ページにダウンロードボタン",
+        "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "オーバーレイ時にダウンロードボタンを自動で隠す",
+        "SAME_FILENAME_AS_IN_ZIP": "個別保存でもZIPと同じファイル名",
+        "SUPPRESS_FILENAME_SUFFIX": "ファイル名の「-orig」を省く",
+        "OPERATION": "有効",
+        "NOT_SAVED": "未保存の変更",
+    } : {
+        "SEC_CLICK": "Click actions",
+        "SEC_VIEWER": "Viewer",
+        "SEC_BUTTON": "Button",
+        "SEC_DOWNLOAD": "Downloads",
+        "SEC_GENERAL": "General",
+        "DEFAULT_ACTION_ON_CLICK_EVENT": "Click",
+        "DEFAULT_ACTION_ON_ALT_CLICK_EVENT": "Alt + click",
+        "DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT": "Shift + click",
+        "DISPLAY_OVERLAY": "Open in overlay (same tab)",
+        "OVERRIDE_CLICK_EVENT": "Clicking a photo opens the original",
+        "SWAP_IMAGE_URL": "Load timeline photos in original size (more data)",
+        "DISPLAY_ORIGINAL_BUTTONS": "Show button on posts",
+        "BUTTON_TEXT_HEADER": "Button label",
+        "DOWNLOAD_HELPER_IS_VALID_HEADER": "Download button on image pages",
+        "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "Auto-hide download button in overlay",
+        "SAME_FILENAME_AS_IN_ZIP": "Single downloads use ZIP file names",
+        "SUPPRESS_FILENAME_SUFFIX": "Drop \u201c-orig\u201d from file names",
+        "OPERATION": "Enabled",
+        "NOT_SAVED": "Unsaved changes",
+    } );
+    
     let resolveInit;
 
     const initPromise = new Promise(resolve => {
@@ -5580,108 +5655,79 @@ async function init_gm_menu() {
                 type : 'select',
                 options : [ 'display_all', 'display_one', 'download_one', 'download_all', 'download_zip' ],
                 default : 'display_all',
-                section : messages.SETTINGS,
+                section : messages.SEC_CLICK,
             },
-            
             DEFAULT_ACTION_ON_ALT_CLICK_EVENT : {
                 label : messages.DEFAULT_ACTION_ON_ALT_CLICK_EVENT,
                 type : 'select',
                 options : [ 'display_all', 'display_one', 'download_one', 'download_all', 'download_zip', 'do_nothing' ],
                 default : 'display_one',
             },
-
             DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT : {
                 label : messages.DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT,
                 type : 'select',
                 options : [ 'display_all', 'display_one', 'download_one', 'download_all', 'download_zip', 'do_nothing' ],
                 default : 'download_one',
             },
-            
+            OVERRIDE_CLICK_EVENT : {
+                label : messages.OVERRIDE_CLICK_EVENT,
+                type : 'checkbox',
+                default : OPTIONS.OVERRIDE_CLICK_EVENT,
+                section : messages.SEC_VIEWER,
+            },
             DISPLAY_OVERLAY : {
                 label : messages.DISPLAY_OVERLAY,
                 type : 'checkbox',
                 default : OPTIONS.DISPLAY_OVERLAY,
             },
-            
-            OVERRIDE_CLICK_EVENT : {
-                label : messages.OVERRIDE_CLICK_EVENT,
-                type : 'checkbox',
-                default : OPTIONS.OVERRIDE_CLICK_EVENT,
-            },
-            
             SWAP_IMAGE_URL : {
                 label : messages.SWAP_IMAGE_URL,
                 type : 'checkbox',
                 default : OPTIONS.SWAP_IMAGE_URL,
             },
-            
             DISPLAY_ORIGINAL_BUTTONS : {
                 label : messages.DISPLAY_ORIGINAL_BUTTONS,
                 type : 'checkbox',
                 default : OPTIONS.DISPLAY_ORIGINAL_BUTTONS,
+                section : messages.SEC_BUTTON,
             },
-            
             BUTTON_TEXT : {
                 label : messages.BUTTON_TEXT_HEADER,
                 type : 'text',
                 default : OPTIONS.BUTTON_TEXT,
             },
-            
-            ENABLED_ON_TWEETDECK : {
-                label : messages.ENABLED_ON_TWEETDECK,
-                type : 'checkbox',
-                default : OPTIONS.ENABLED_ON_TWEETDECK,
-            },
-            
-            OVERRIDE_GALLERY_FOR_TWEETDECK : {
-                label : messages.OVERRIDE_GALLERY_FOR_TWEETDECK,
-                type : 'checkbox',
-                default : OPTIONS.OVERRIDE_GALLERY_FOR_TWEETDECK,
-            },
-            
             DOWNLOAD_HELPER_SCRIPT_IS_VALID : {
                 label : messages.DOWNLOAD_HELPER_IS_VALID_HEADER,
                 type : 'checkbox',
                 default : OPTIONS.DOWNLOAD_HELPER_SCRIPT_IS_VALID,
+                section : messages.SEC_DOWNLOAD,
             },
-            
             HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY : {
                 label : messages.HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY,
                 type : 'checkbox',
                 default : OPTIONS.HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY,
             },
-            
             SAME_FILENAME_AS_IN_ZIP : {
                 label : messages.SAME_FILENAME_AS_IN_ZIP,
                 type : 'checkbox',
                 default : OPTIONS.SAME_FILENAME_AS_IN_ZIP,
             },
-            
             SUPPRESS_FILENAME_SUFFIX : {
                 label : messages.SUPPRESS_FILENAME_SUFFIX,
                 type : 'checkbox',
                 default : OPTIONS.SUPPRESS_FILENAME_SUFFIX,
             },
-            
             UI_THEME : {
                 label : messages.UI_THEME,
                 type : 'select',
                 options : [ 'auto', 'dark', 'light' ],
                 default : 'auto',
-                section : messages.APPEARANCE,
+                section : messages.SEC_GENERAL,
             },
-            
-            UI_GLASS : {
-                label : messages.UI_GLASS,
-                type : 'checkbox',
-                default : true,
-            },
-            
             OPERATION : {
                 label : messages.OPERATION,
                 type : 'checkbox',
                 default : OPTIONS.OPERATION,
-                section : messages.CONTROL,
             },
         },
         events : {
@@ -5730,7 +5776,6 @@ async function init_gm_menu() {
                     x_button = make( 'button', { type : 'button', className : 'tooi-icon-button', textContent : '\u2715', title : messages.CLOSE } ),
                     body = frame_doc.body,
                     theme_field = GM_config.fields[ 'UI_THEME' ],
-                    glass_field = GM_config.fields[ 'UI_GLASS' ],
                     theme_labels = { auto : messages.THEME_AUTO, dark : messages.THEME_DARK, light : messages.THEME_LIGHT },
                     svg_icon = ( paths ) => {
                         var ns = 'http://www.w3.org/2000/svg',
@@ -5754,13 +5799,10 @@ async function init_gm_menu() {
                             return;
                         }
                         var theme = theme_field.node ? theme_field.node.value : GM_config.get( 'UI_THEME' ),
-                            glass = glass_field.node ? glass_field.node.checked : GM_config.get( 'UI_GLASS' ),
                             dark = ( theme == 'dark' ) || ( ( theme == 'auto' ) && dark_query.matches );
                         
                         body.dataset.theme = dark ? 'dark' : 'light';
-                        body.classList.toggle( 'glass', !! glass );
-                        frame.style.backgroundColor = dark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(16, 20, 28, 0.30)';
-                        frame.style.backdropFilter = frame.style.webkitBackdropFilter = glass ? 'blur(10px) saturate(1.15)' : 'none';
+                        frame.style.backgroundColor = dark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(15, 20, 30, 0.35)';
                         theme_button.replaceChildren( ( theme_icons[ theme ] || theme_icons.auto )() );
                         theme_button.title = `${messages.UI_THEME}: ${theme_labels[ theme ] || theme}`;
                     };
@@ -5802,14 +5844,27 @@ async function init_gm_menu() {
                     [ ... theme_field.node.options ].forEach( opt => opt.textContent = theme_labels[ opt.value ] || opt.value );
                     theme_field.node.addEventListener( 'change', apply_ui );
                 }
-                if ( glass_field.node ) {
-                    glass_field.node.addEventListener( 'change', apply_ui );
+                // Button label only matters when buttons are shown
+                var buttons_field = GM_config.fields[ 'DISPLAY_ORIGINAL_BUTTONS' ],
+                    text_field = GM_config.fields[ 'BUTTON_TEXT' ],
+                    sync_button_text = () => {
+                        if ( buttons_field.node && text_field.node ) {
+                            text_field.node.disabled = ! buttons_field.node.checked;
+                            text_field.wrapper.classList.toggle( 'tooi-dim', ! buttons_field.node.checked );
+                        }
+                    };
+                if ( buttons_field.node ) {
+                    buttons_field.node.addEventListener( 'change', sync_button_text );
                 }
+                sync_button_text();
+                
+                // Live "unsaved" status while typing
+                frame_doc.querySelector( `#${config_id}_wrapper` ).addEventListener( 'input', () => update_save_status(), false );
                 if ( dark_query.addEventListener ) {
                     dark_query.addEventListener( 'change', apply_ui );
                 }
                 apply_ui();
-                frame_doc.querySelector( `#${config_id}_resetLink` ).addEventListener( 'click', () => setTimeout( apply_ui, 0 ) );
+                frame_doc.querySelector( `#${config_id}_resetLink` ).addEventListener( 'click', () => setTimeout( () => { apply_ui(); sync_button_text(); }, 0 ) );
                 
                 // Click on the dimmed backdrop closes the dialog
                 frame_doc.addEventListener( 'mousedown', event => {
@@ -5881,6 +5936,7 @@ async function init_gm_menu() {
                 frame_doc.querySelector( `#${config_id}_wrapper` ).addEventListener( 'change', event => {
                     update_save_status();
                 }, false );
+                update_save_status();
             },
             
             reset : function () {
@@ -5912,12 +5968,8 @@ async function init_gm_menu() {
             }
 
             body#${config_id} {
-                /* dark (default) */
-                --bg: #0d0f13;
-                --panel: rgb(18 20 25 / 1);
-                --panel-glass: rgb(18 20 25 / 0.72);
-                --row: rgb(255 255 255 / 0.035);
-                --row-hover: rgb(255 255 255 / 0.06);
+                --panel: #121419;
+                --row-hover: rgb(255 255 255 / 0.045);
                 --line: rgb(255 255 255 / 0.08);
                 --text: #e6e8ec;
                 --muted: #8b919c;
@@ -5925,11 +5977,11 @@ async function init_gm_menu() {
                 --accent: #8fb3ff;
                 --accent-text: #0b1020;
                 --field: rgb(255 255 255 / 0.05);
-                --field-border: rgb(255 255 255 / 0.12);
-                --switch-off: rgb(255 255 255 / 0.16);
+                --field-border: rgb(255 255 255 / 0.13);
+                --switch-off: rgb(255 255 255 / 0.18);
                 --danger: #ff8a8a;
                 --heart: #ff8fb0;
-                --shadow: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
+                --shadow: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.07);
 
                 margin: 0;
                 min-height: 100vh;
@@ -5939,15 +5991,13 @@ async function init_gm_menu() {
                 align-items: center;
                 justify-content: center;
                 background: transparent !important;
-                font-size: clamp(13px, 12px + 0.15vw, 15px);
+                font-size: 14px;
                 -webkit-font-smoothing: antialiased;
             }
 
             body#${config_id}[data-theme="light"] {
-                --panel: rgb(250 250 252 / 1);
-                --panel-glass: rgb(250 250 252 / 0.86);
-                --row: rgb(0 0 0 / 0.025);
-                --row-hover: rgb(0 0 0 / 0.05);
+                --panel: #fbfbfc;
+                --row-hover: rgb(0 0 0 / 0.035);
                 --line: rgb(0 0 0 / 0.08);
                 --text: #16181d;
                 --muted: #5f6672;
@@ -5955,11 +6005,11 @@ async function init_gm_menu() {
                 --accent: #2f5bd3;
                 --accent-text: #ffffff;
                 --field: #ffffff;
-                --field-border: rgb(0 0 0 / 0.14);
-                --switch-off: rgb(0 0 0 / 0.18);
+                --field-border: rgb(0 0 0 / 0.15);
+                --switch-off: rgb(0 0 0 / 0.2);
                 --danger: #c62828;
                 --heart: #d6336c;
-                --shadow: 0 24px 64px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.06);
+                --shadow: 0 24px 64px rgb(0 0 0 / 0.2), 0 0 0 1px rgb(0 0 0 / 0.07);
             }
 
             #${config_id} * {
@@ -5969,37 +6019,20 @@ async function init_gm_menu() {
 
             #${config_id}_wrapper {
                 color-scheme: dark;
-                position: relative;
-                width: min(620px, 100%);
+                width: min(600px, 100%);
                 max-height: calc(100vh - 32px);
                 overflow: auto;
                 overscroll-behavior: contain;
                 scrollbar-width: thin;
-                scrollbar-color: var(--line) transparent;
-                padding: 0 20px 14px;
-                border-radius: 14px;
+                padding: 0 18px;
+                border-radius: 12px;
                 background: var(--panel);
                 color: var(--text);
                 box-shadow: var(--shadow);
-                animation: tooi-in .18s ease-out;
             }
 
             body#${config_id}[data-theme="light"] #${config_id}_wrapper {
                 color-scheme: light;
-            }
-
-            body#${config_id}.glass #${config_id}_wrapper {
-                background: var(--panel-glass);
-            }
-
-            @keyframes tooi-in {
-                from { opacity: 0; transform: translateY(6px) scale(.985); }
-                to   { opacity: 1; transform: none; }
-            }
-
-            @media (prefers-reduced-motion: reduce) {
-                #${config_id}_wrapper { animation: none; }
-                #${config_id} * { transition: none !important; }
             }
 
             /* header */
@@ -6011,19 +6044,12 @@ async function init_gm_menu() {
                 align-items: center;
                 justify-content: space-between;
                 gap: 12px;
-                margin: 0 -20px 4px;
-                padding: 14px 20px 12px;
+                margin: 0 -18px;
+                padding: 10px 12px 10px 18px;
                 font-size: 1rem;
                 text-align: left;
-                background: inherit;
+                background: var(--panel);
                 border-bottom: 1px solid var(--line);
-                backdrop-filter: blur(12px);
-            }
-
-            body#${config_id}.glass .config_header,
-            body#${config_id}.glass #${config_id}_buttons_holder {
-                background: color-mix(in srgb, var(--panel) 90%, transparent);
-                backdrop-filter: blur(12px);
             }
 
             #${config_id} .tooi-title {
@@ -6036,8 +6062,7 @@ async function init_gm_menu() {
             #${config_id}_header-title-link {
                 color: var(--text);
                 font-weight: 600;
-                font-size: 1.05em;
-                letter-spacing: -0.01em;
+                font-size: 15px;
                 text-decoration: none;
                 white-space: nowrap;
                 overflow: hidden;
@@ -6050,31 +6075,30 @@ async function init_gm_menu() {
 
             #${config_id} .tooi-version {
                 font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
-                font-size: 0.75em;
+                font-size: 11px;
                 color: var(--muted);
             }
 
             #${config_id} .tooi-actions {
                 display: flex;
-                gap: 4px;
+                gap: 2px;
                 flex: none;
             }
 
             #${config_id} .tooi-icon-button {
-                width: 30px;
-                height: 30px;
+                width: 28px;
+                height: 28px;
                 display: grid;
                 place-items: center;
                 padding: 0;
                 margin: 0;
-                border: 1px solid transparent;
-                border-radius: 8px;
+                border: none;
+                border-radius: 6px;
                 background: transparent;
                 color: var(--muted);
-                font-size: 15px;
+                font-size: 14px;
                 line-height: 1;
                 cursor: pointer;
-                transition: background .15s, color .15s;
             }
 
             #${config_id} .tooi-icon-button:hover {
@@ -6082,229 +6106,23 @@ async function init_gm_menu() {
                 color: var(--text);
             }
 
-            /* sections */
-            #${config_id} .section_header_holder {
-                margin-top: 14px;
-            }
-
-            #${config_id} .section_header {
-                margin: 0 0 6px;
-                padding: 0 2px;
-                border: none;
-                background: transparent;
-                color: var(--muted);
-                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
-                font-size: 0.72em;
-                font-weight: 500;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
-                text-align: left;
-            }
-
-            /* rows */
-            #${config_id} .config_var {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 16px;
-                margin: 0 0 2px;
-                padding: 8px 10px;
-                border: none;
-                border-radius: 8px;
-                background: var(--row);
-                transition: background .15s;
-            }
-
-            #${config_id} .config_var:hover {
-                background: var(--row-hover);
-            }
-
-            #${config_id} .field_label {
-                display: block;
-                min-width: 0;
-                margin: 0;
-                font-size: 0.93em;
-                font-weight: 400;
-                line-height: 1.35;
-                color: var(--text);
-                cursor: pointer;
-            }
-
-            #${config_id} .config_var > div[id] {
-                display: inline-block;
-            }
-
-            /* inputs */
-            #${config_id} select,
-            #${config_id} input[type="text"] {
-                flex: none;
-                width: 220px;
-                max-width: 52%;
-                height: 32px;
-                padding: 0 10px;
-                border: 1px solid var(--field-border);
-                border-radius: 8px;
-                background-color: var(--field);
-                color: var(--text);
-                font-size: 0.9em;
-                outline: none;
-                transition: border-color .15s, box-shadow .15s;
-            }
-
-            #${config_id} select {
-                cursor: pointer;
-            }
-
-            #${config_id} select option {
-                background: var(--panel);
-                color: var(--text);
-            }
-
-            #${config_id} select:focus-visible,
-            #${config_id} input[type="text"]:focus-visible {
-                border-color: var(--accent);
-                box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
-            }
-
-            /* checkbox -> switch */
-            #${config_id} input[type="checkbox"] {
-                -webkit-appearance: none;
-                appearance: none;
-                position: relative;
-                flex: none;
-                order: 2;
-                width: 36px;
-                height: 20px;
-                margin: 0;
-                border-radius: 999px;
-                background: var(--switch-off);
-                cursor: pointer;
-                transition: background .18s ease;
-            }
-
-            #${config_id} input[type="checkbox"]::after {
-                content: "";
-                position: absolute;
-                top: 3px;
-                left: 3px;
-                width: 14px;
-                height: 14px;
-                border-radius: 50%;
-                background: #fff;
-                box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
-                transition: transform .18s ease;
-            }
-
-            #${config_id} input[type="checkbox"]:checked {
-                background: var(--accent);
-            }
-
-            #${config_id} input[type="checkbox"]:checked::after {
-                transform: translateX(16px);
-            }
-
-            #${config_id} input[type="checkbox"]:focus-visible {
-                outline: 2px solid var(--accent);
-                outline-offset: 2px;
-            }
-
-            #${config_id} input:disabled {
-                opacity: .4;
-                cursor: not-allowed;
-            }
-
-            /* footer buttons */
-            #${config_id}_buttons_holder {
-                position: sticky;
-                bottom: -14px;
-                z-index: 2;
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                justify-content: flex-end;
-                gap: 8px;
-                margin: 14px -20px 0;
-                padding: 12px 20px;
-                text-align: right;
-                color: var(--text);
-                background: inherit;
-                border-top: 1px solid var(--line);
-            }
-
-
-            #${config_id} .reset_holder {
-                order: -1;
-                margin-right: auto;
-            }
-
-            #${config_id} .reset,
-            #${config_id} .reset a {
-                color: var(--muted);
-                font-size: 0.85em;
-                text-decoration: none;
-            }
-
-            #${config_id} .reset:hover {
-                color: var(--danger);
-            }
-
-            #${config_id} .saveclose_buttons {
-                margin: 0;
-                height: 32px;
-                padding: 0 16px;
-                border-radius: 8px;
-                border: 1px solid var(--field-border);
-                background: transparent;
-                color: var(--text);
-                font-size: 0.9em;
-                font-weight: 500;
-                cursor: pointer;
-                transition: background .15s, filter .15s;
-            }
-
-            #${config_id} .saveclose_buttons:hover {
-                background: var(--row-hover);
-            }
-
-            #${config_id}_saveBtn.saveclose_buttons {
-                border-color: transparent;
-                background: var(--accent);
-                color: var(--accent-text);
-            }
-
-            #${config_id}_saveBtn.saveclose_buttons:hover {
-                background: var(--accent);
-                filter: brightness(1.08);
-            }
-
-            #${config_id}_save-status {
-                display: inline-block;
-                font-size: 0.85em;
-            }
-
-            #${config_id} .warning {
-                font-weight: 500;
-                color: var(--danger);
-            }
-
             /* credits */
             #${config_id} .tooi-credits {
                 display: flex;
                 flex-wrap: wrap;
                 align-items: baseline;
-                gap: 4px 10px;
-                margin-top: 12px;
-                background: var(--row);
-                padding: 10px 12px;
-                border-radius: 10px;
+                gap: 2px 10px;
+                margin: 10px 0 2px;
+                padding: 7px 10px;
+                border-radius: 8px;
                 border: 1px dashed var(--line);
-                font-size: 0.82em;
+                font-size: 12px;
                 color: var(--muted);
             }
 
             #${config_id} .tooi-credits-label {
                 font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
-                font-size: 0.85em;
+                font-size: 10px;
                 letter-spacing: 0.1em;
                 text-transform: uppercase;
             }
@@ -6343,17 +6161,211 @@ async function init_gm_menu() {
                 color: var(--muted);
             }
 
-            /* narrow screens: stack rows */
+            /* sections */
+            #${config_id} .section_header_holder {
+                margin-top: 10px;
+            }
+
+            #${config_id} .section_header {
+                margin: 0 0 2px;
+                padding: 0 8px;
+                border: none;
+                background: transparent;
+                color: var(--muted);
+                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+                font-size: 10.5px;
+                font-weight: 500;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                text-align: left;
+            }
+
+            /* rows */
+            #${config_id} .config_var {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                min-height: 34px;
+                margin: 0;
+                padding: 3px 8px;
+                border-radius: 6px;
+            }
+
+            #${config_id} .config_var:hover {
+                background: var(--row-hover);
+            }
+
+            #${config_id} .config_var.tooi-dim .field_label {
+                color: var(--faint);
+            }
+
+            #${config_id} .field_label {
+                display: block;
+                min-width: 0;
+                margin: 0;
+                font-size: 13.5px;
+                font-weight: 400;
+                line-height: 1.3;
+                color: var(--text);
+                cursor: pointer;
+            }
+
+            /* inputs */
+            #${config_id} select,
+            #${config_id} input[type="text"] {
+                flex: none;
+                width: 230px;
+                max-width: 55%;
+                height: 28px;
+                padding: 0 8px;
+                border: 1px solid var(--field-border);
+                border-radius: 6px;
+                background-color: var(--field);
+                color: var(--text);
+                font-size: 13px;
+                outline: none;
+            }
+
+            #${config_id} select {
+                cursor: pointer;
+            }
+
+            #${config_id} select option {
+                background: var(--panel);
+                color: var(--text);
+            }
+
+            #${config_id} select:focus-visible,
+            #${config_id} input[type="text"]:focus-visible {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+            }
+
+            /* checkbox -> switch */
+            #${config_id} input[type="checkbox"] {
+                -webkit-appearance: none;
+                appearance: none;
+                position: relative;
+                flex: none;
+                width: 34px;
+                height: 19px;
+                margin: 0;
+                border-radius: 999px;
+                background: var(--switch-off);
+                cursor: pointer;
+                transition: background .15s ease;
+            }
+
+            #${config_id} input[type="checkbox"]::after {
+                content: "";
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 13px;
+                height: 13px;
+                border-radius: 50%;
+                background: #fff;
+                transition: transform .15s ease;
+            }
+
+            #${config_id} input[type="checkbox"]:checked {
+                background: var(--accent);
+            }
+
+            #${config_id} input[type="checkbox"]:checked::after {
+                transform: translateX(15px);
+            }
+
+            #${config_id} input[type="checkbox"]:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+
+            #${config_id} input:disabled,
+            #${config_id} button:disabled {
+                opacity: .4;
+                cursor: default;
+            }
+
+            /* footer */
+            #${config_id}_buttons_holder {
+                position: sticky;
+                bottom: 0;
+                z-index: 2;
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 8px;
+                margin: 10px -18px 0;
+                padding: 10px 18px;
+                color: var(--text);
+                background: var(--panel);
+                border-top: 1px solid var(--line);
+            }
+
+            #${config_id} .reset_holder {
+                order: -1;
+                margin-right: auto;
+            }
+
+            #${config_id} .reset,
+            #${config_id} .reset a {
+                color: var(--muted);
+                font-size: 12px;
+                text-decoration: none;
+            }
+
+            #${config_id} .reset:hover {
+                color: var(--danger);
+            }
+
+            #${config_id} .saveclose_buttons {
+                margin: 0;
+                height: 30px;
+                padding: 0 16px;
+                border-radius: 6px;
+                border: 1px solid var(--field-border);
+                background: transparent;
+                color: var(--text);
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+            }
+
+            #${config_id} .saveclose_buttons:not(:disabled):hover {
+                background: var(--row-hover);
+            }
+
+            #${config_id}_saveBtn.saveclose_buttons {
+                border-color: transparent;
+                background: var(--accent);
+                color: var(--accent-text);
+            }
+
+            #${config_id}_saveBtn.saveclose_buttons:not(:disabled):hover {
+                background: var(--accent);
+                filter: brightness(1.08);
+            }
+
+            #${config_id}_save-status {
+                font-size: 12px;
+            }
+
+            #${config_id} .warning {
+                font-weight: 500;
+                color: var(--danger);
+            }
+
             @media (max-width: 520px) {
                 body#${config_id} { padding: 8px; }
-                #${config_id}_wrapper { max-height: calc(100vh - 16px); padding: 0 14px 12px; }
-                #${config_id} .config_header,
-                #${config_id}_buttons_holder { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+                #${config_id}_wrapper { max-height: calc(100vh - 16px); }
                 #${config_id} .config_var:has(select),
-                #${config_id} .config_var:has(input[type="text"]) { flex-direction: column; align-items: stretch; gap: 6px; }
+                #${config_id} .config_var:has(input[type="text"]) { flex-direction: column; align-items: stretch; gap: 4px; padding: 6px 8px; }
                 #${config_id} select,
                 #${config_id} input[type="text"] { width: 100%; max-width: none; }
                 #${config_id} .tooi-credits-maintainer { margin-left: 0; }
+                #${config_id}_save-status { display: none; }
             }
         `,
     } );

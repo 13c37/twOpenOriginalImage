@@ -21,13 +21,19 @@ Hover a post with images and use the **Original** button:
 | One image per page | <kbd>Alt</kbd> + Click |
 | Download selected image | <kbd>Shift</kbd> + Click |
 
-Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) and the glass effect are under *Appearance*.
+Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) is under *General* or the ◐ button in the dialog header.
 
 ## Bugs
 
 Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the post URL and your browser + userscript manager.
 
 ## Changelog
+
+### 0.1.25
+- Settings fit on one screen (no scrolling at 1080p / 1440p): compact grouped list — Click actions, Viewer, Button, Downloads, General.
+- Clearer setting names; dead TweetDeck options hidden (TweetDeck is gone; defaults still apply).
+- Removed the glass/blur option. Save is disabled until something changes; button label greys out when buttons are off.
+- Performance: page scans are batched (max ~10/s) instead of running on every DOM change X makes; night-mode attribute only written when it changes.
 
 ### 0.1.24
 - Redesigned settings dialog: dark / light / auto theme (toggle in the header), optional see-through glass panel, switches instead of checkboxes, scales from phone to 4K.
