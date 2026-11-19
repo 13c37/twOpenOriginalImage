@@ -21,13 +21,18 @@ Hover a post with images and use the **Original** button:
 | One image per page | <kbd>Alt</kbd> + Click |
 | Download selected image | <kbd>Shift</kbd> + Click |
 
-Actions can be changed in the userscript menu → Settings.
+Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) and the glass effect are under *Appearance*.
 
 ## Bugs
 
 Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the post URL and your browser + userscript manager.
 
 ## Changelog
+
+### 0.1.24
+- Redesigned settings dialog: dark / light / auto theme (toggle in the header), optional see-through glass panel, switches instead of checkboxes, scales from phone to 4K.
+- Click outside the dialog or press <kbd>Esc</kbd> to close.
+- Credits for the original author (furyu) with website and donation link are now shown in the dialog.
 
 ### 0.1.23
 - Support posts with up to 20 photos (previously only the first ~6 were picked up). Photo list is read from the post data, with a fallback to the syndication API.

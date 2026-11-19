@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.23
+// @version         0.1.24
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
@@ -5491,6 +5491,16 @@ async function init_gm_menu() {
                 "SET_DEFAULT": "デフォルトに戻す",
                 "OPERATION": "Twitter 原寸びゅー稼働",
                 "NOT_SAVED": "未保存",
+                "APPEARANCE": "外観",
+                "UI_THEME": "テーマ",
+                "UI_GLASS": "半透明（背景を透かす）",
+                "THEME_AUTO": "自動（システム）",
+                "THEME_DARK": "ダーク",
+                "THEME_LIGHT": "ライト",
+                "ORIGINAL_AUTHOR": "原作者",
+                "AUTHOR_SITE": "ウェブサイト",
+                "DONATE_AUTHOR": "furyu さんを支援",
+                "MAINTAINED_BY": "メンテナンス",
             });
             break;
         
@@ -5540,6 +5550,16 @@ async function init_gm_menu() {
                 "SET_DEFAULT": "Reset to defaults",
                 "OPERATION": "Running Twitter View Original Images",
                 "NOT_SAVED": "Not saved",
+                "APPEARANCE": "Appearance",
+                "UI_THEME": "Theme",
+                "UI_GLASS": "See-through panel (glass)",
+                "THEME_AUTO": "Auto (system)",
+                "THEME_DARK": "Dark",
+                "THEME_LIGHT": "Light",
+                "ORIGINAL_AUTHOR": "Original author",
+                "AUTHOR_SITE": "Website",
+                "DONATE_AUTHOR": "Support furyu (donate)",
+                "MAINTAINED_BY": "Maintained by",
             });
             break;
     }
@@ -5553,6 +5573,7 @@ async function init_gm_menu() {
     GM_config.init( {
         id : config_id,
         title : `${messages.ext_title} version ${GM_info.script.version}`,
+        frameStyle : 'position: fixed; inset: 0; top: 0; left: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: none; display: none; opacity: 0; z-index: 99999; background: transparent; color-scheme: normal; transition: background-color .2s ease;',
         fields : {
             DEFAULT_ACTION_ON_CLICK_EVENT : {
                 label : messages.DEFAULT_ACTION_ON_CLICK_EVENT,
@@ -5642,6 +5663,20 @@ async function init_gm_menu() {
                 default : OPTIONS.SUPPRESS_FILENAME_SUFFIX,
             },
             
+            UI_THEME : {
+                label : messages.UI_THEME,
+                type : 'select',
+                options : [ 'auto', 'dark', 'light' ],
+                default : 'auto',
+                section : messages.APPEARANCE,
+            },
+            
+            UI_GLASS : {
+                label : messages.UI_GLASS,
+                type : 'checkbox',
+                default : true,
+            },
+            
             OPERATION : {
                 label : messages.OPERATION,
                 type : 'checkbox',
@@ -5674,7 +5709,7 @@ async function init_gm_menu() {
                 saved_value_map = open_value_map = get_config_value_map();
                 
                 frame.style.border = 'none';
-                frame.style.zIndex = 99999;
+                frame.style.zIndex = 2147483646;
                 
                 
                 if ( is_firefox() ) {
@@ -5682,23 +5717,106 @@ async function init_gm_menu() {
                 }
                 
                 var config_header = frame_doc.querySelector( `#${config_id}_header` ),
-                    header_link = frame_doc.createElement( 'a' ),
-                    donation_link = frame_doc.createElement( 'a' );
+                    make = ( tag, props = {}, ...children ) => {
+                        var element = frame_doc.createElement( tag );
+                        Object.assign( element, props );
+                        children.forEach( child => element.append( child ) );
+                        return element;
+                    },
+                    make_link = ( text, href, props = {} ) => make( 'a', Object.assign( { textContent : text, href, target : '_blank', rel : 'noopener noreferrer' }, props ) ),
+                    header_link = make_link( messages.ext_title, GM_info.script.homepage || 'https://github.com/13c37/twOpenOriginalImage' ),
+                    version_badge = make( 'span', { className : 'tooi-version', textContent : `v${GM_info.script.version}` } ),
+                    theme_button = make( 'button', { type : 'button', className : 'tooi-icon-button', id : `${config_id}_theme-button` } ),
+                    x_button = make( 'button', { type : 'button', className : 'tooi-icon-button', textContent : '\u2715', title : messages.CLOSE } ),
+                    body = frame_doc.body,
+                    theme_field = GM_config.fields[ 'UI_THEME' ],
+                    glass_field = GM_config.fields[ 'UI_GLASS' ],
+                    theme_labels = { auto : messages.THEME_AUTO, dark : messages.THEME_DARK, light : messages.THEME_LIGHT },
+                    svg_icon = ( paths ) => {
+                        var ns = 'http://www.w3.org/2000/svg',
+                            svg = frame_doc.createElementNS( ns, 'svg' );
+                        [ [ 'viewBox', '0 0 24 24' ], [ 'width', '16' ], [ 'height', '16' ], [ 'fill', 'none' ], [ 'stroke', 'currentColor' ], [ 'stroke-width', '2' ], [ 'stroke-linecap', 'round' ], [ 'stroke-linejoin', 'round' ], [ 'aria-hidden', 'true' ] ].forEach( ( [ k, v ] ) => svg.setAttribute( k, v ) );
+                        paths.forEach( ( [ tag, attrs ] ) => {
+                            var el = frame_doc.createElementNS( ns, tag );
+                            Object.keys( attrs ).forEach( k => el.setAttribute( k, attrs[ k ] ) );
+                            svg.appendChild( el );
+                        } );
+                        return svg;
+                    },
+                    theme_icons = {
+                        auto : () => svg_icon( [ [ 'circle', { cx : 12, cy : 12, r : 9 } ], [ 'path', { d : 'M12 3a9 9 0 0 1 0 18z', fill : 'currentColor' } ] ] ),
+                        dark : () => svg_icon( [ [ 'path', { d : 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z' } ] ] ),
+                        light : () => svg_icon( [ [ 'circle', { cx : 12, cy : 12, r : 4 } ], [ 'path', { d : 'M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4' } ] ] ),
+                    },
+                    dark_query = window.matchMedia( '(prefers-color-scheme: dark)' ),
+                    apply_ui = () => {
+                        if ( ! GM_config.isOpen && ! theme_field.node ) {
+                            return;
+                        }
+                        var theme = theme_field.node ? theme_field.node.value : GM_config.get( 'UI_THEME' ),
+                            glass = glass_field.node ? glass_field.node.checked : GM_config.get( 'UI_GLASS' ),
+                            dark = ( theme == 'dark' ) || ( ( theme == 'auto' ) && dark_query.matches );
+                        
+                        body.dataset.theme = dark ? 'dark' : 'light';
+                        body.classList.toggle( 'glass', !! glass );
+                        frame.style.backgroundColor = dark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(16, 20, 28, 0.30)';
+                        frame.style.backdropFilter = frame.style.webkitBackdropFilter = glass ? 'blur(10px) saturate(1.15)' : 'none';
+                        theme_button.replaceChildren( ( theme_icons[ theme ] || theme_icons.auto )() );
+                        theme_button.title = `${messages.UI_THEME}: ${theme_labels[ theme ] || theme}`;
+                    };
                 
                 header_link.id = `${config_id}_header-title-link`;
-                header_link.textContent = config_header.textContent;
-                header_link.target = '_blank';
-                header_link.href = GM_info.script.homepage || 'https://github.com/Coxxs/twOpenOriginalImage/';
+                theme_button.addEventListener( 'click', () => {
+                    var order = [ 'auto', 'dark', 'light' ],
+                        node = theme_field.node;
+                    node.value = order[ ( order.indexOf( node.value ) + 1 ) % order.length ];
+                    node.dispatchEvent( new Event( 'change', { bubbles : true } ) );
+                } );
+                x_button.addEventListener( 'click', () => GM_config.close() );
                 
-                donation_link.textContent = messages.DOMATION;
-                donation_link.id = `${config_id}_header-donation-link`;
-                donation_link.target = '_blank';
-                donation_link.href = 'https://memo.furyutei.com/about#send_donation';
-                
-                //config_header.classList.remove( 'center' );
+                config_header.classList.remove( 'center' );
                 config_header.textContent = '';
-                config_header.appendChild( header_link );
-                config_header.appendChild( donation_link );
+                config_header.append(
+                    make( 'div', { className : 'tooi-title' }, header_link, version_badge ),
+                    make( 'div', { className : 'tooi-actions' }, theme_button, x_button )
+                );
+                
+                // Credits: original author, website, donation
+                var credits = make( 'div', { id : `${config_id}_credits`, className : 'tooi-credits' },
+                    make( 'span', { className : 'tooi-credits-label', textContent : messages.ORIGINAL_AUTHOR } ),
+                    make( 'span', { className : 'tooi-credits-name', textContent : 'furyu' } ),
+                    make( 'span', { className : 'tooi-credits-links' },
+                        make_link( messages.AUTHOR_SITE, 'https://memo.furyutei.com/' ),
+                        make_link( 'GitHub', 'https://github.com/furyutei' ),
+                        make_link( `\u2665 ${messages.DONATE_AUTHOR}`, 'https://memo.furyutei.com/about#send_donation', { className : 'tooi-donate', id : `${config_id}_header-donation-link` } )
+                    ),
+                    make( 'span', { className : 'tooi-credits-maintainer' },
+                        `${messages.MAINTAINED_BY} `,
+                        make_link( '13c37', 'https://github.com/13c37/twOpenOriginalImage' )
+                    )
+                );
+                config_header.after( credits );
+                
+                // Theme select labels
+                if ( theme_field.node ) {
+                    [ ... theme_field.node.options ].forEach( opt => opt.textContent = theme_labels[ opt.value ] || opt.value );
+                    theme_field.node.addEventListener( 'change', apply_ui );
+                }
+                if ( glass_field.node ) {
+                    glass_field.node.addEventListener( 'change', apply_ui );
+                }
+                if ( dark_query.addEventListener ) {
+                    dark_query.addEventListener( 'change', apply_ui );
+                }
+                apply_ui();
+                frame_doc.querySelector( `#${config_id}_resetLink` ).addEventListener( 'click', () => setTimeout( apply_ui, 0 ) );
+                
+                // Click on the dimmed backdrop closes the dialog
+                frame_doc.addEventListener( 'mousedown', event => {
+                    if ( ( event.target === body ) || ( event.target === frame_doc.documentElement ) ) {
+                        GM_config.close();
+                    }
+                } );
                 
                 var save_button = frame_doc.querySelector( `#${config_id}_saveBtn` ),
                     close_button = frame_doc.querySelector( `#${config_id}_closeBtn` ),
@@ -5782,93 +5900,460 @@ async function init_gm_menu() {
             
             close : function () {
                 var current_value_map = get_config_value_map();
-                if ( 0 < get_diff_values( open_value_map, current_value_map ).length ) {
+                if ( 0 < get_diff_values( open_value_map, current_value_map ).filter( diff => ! /^UI_/.test( diff.field_id ) ).length ) {
                     window.location.reload();
                 }
             },
         },
         css : `
-            #${config_id} {
-                font-family: ${FONT_FAMILY};
-                background-color: transparent;
+            html {
+                height: 100%;
+                background: transparent !important;
             }
-            
+
+            body#${config_id} {
+                /* dark (default) */
+                --bg: #0d0f13;
+                --panel: rgb(18 20 25 / 1);
+                --panel-glass: rgb(18 20 25 / 0.72);
+                --row: rgb(255 255 255 / 0.035);
+                --row-hover: rgb(255 255 255 / 0.06);
+                --line: rgb(255 255 255 / 0.08);
+                --text: #e6e8ec;
+                --muted: #8b919c;
+                --faint: #5d636e;
+                --accent: #8fb3ff;
+                --accent-text: #0b1020;
+                --field: rgb(255 255 255 / 0.05);
+                --field-border: rgb(255 255 255 / 0.12);
+                --switch-off: rgb(255 255 255 / 0.16);
+                --danger: #ff8a8a;
+                --heart: #ff8fb0;
+                --shadow: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
+
+                margin: 0;
+                min-height: 100vh;
+                box-sizing: border-box;
+                padding: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: transparent !important;
+                font-size: clamp(13px, 12px + 0.15vw, 15px);
+                -webkit-font-smoothing: antialiased;
+            }
+
+            body#${config_id}[data-theme="light"] {
+                --panel: rgb(250 250 252 / 1);
+                --panel-glass: rgb(250 250 252 / 0.86);
+                --row: rgb(0 0 0 / 0.025);
+                --row-hover: rgb(0 0 0 / 0.05);
+                --line: rgb(0 0 0 / 0.08);
+                --text: #16181d;
+                --muted: #5f6672;
+                --faint: #9097a3;
+                --accent: #2f5bd3;
+                --accent-text: #ffffff;
+                --field: #ffffff;
+                --field-border: rgb(0 0 0 / 0.14);
+                --switch-off: rgb(0 0 0 / 0.18);
+                --danger: #c62828;
+                --heart: #d6336c;
+                --shadow: 0 24px 64px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.06);
+            }
+
+            #${config_id} * {
+                font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+                box-sizing: border-box;
+            }
+
             #${config_id}_wrapper {
-                width: 75%;
-                min-width: 700px;
-                margin: auto;
-                background-color: #ffffff;
-                padding: 16px 32px;
-                border-radius: 8px;
-                box-shadow: 3px 3px 6px;
-            }
-            
-            #${config_id} .config_header {
+                color-scheme: dark;
                 position: relative;
-                font-size: 16px;
-                margin: 0 auto;
-                padding: 4px 8px;
-                background-color: #4682b4;
+                width: min(620px, 100%);
+                max-height: calc(100vh - 32px);
+                overflow: auto;
+                overscroll-behavior: contain;
+                scrollbar-width: thin;
+                scrollbar-color: var(--line) transparent;
+                padding: 0 20px 14px;
+                border-radius: 14px;
+                background: var(--panel);
+                color: var(--text);
+                box-shadow: var(--shadow);
+                animation: tooi-in .18s ease-out;
+            }
+
+            body#${config_id}[data-theme="light"] #${config_id}_wrapper {
+                color-scheme: light;
+            }
+
+            body#${config_id}.glass #${config_id}_wrapper {
+                background: var(--panel-glass);
+            }
+
+            @keyframes tooi-in {
+                from { opacity: 0; transform: translateY(6px) scale(.985); }
+                to   { opacity: 1; transform: none; }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                #${config_id}_wrapper { animation: none; }
+                #${config_id} * { transition: none !important; }
+            }
+
+            /* header */
+            #${config_id} .config_header {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin: 0 -20px 4px;
+                padding: 14px 20px 12px;
+                font-size: 1rem;
                 text-align: left;
+                background: inherit;
+                border-bottom: 1px solid var(--line);
+                backdrop-filter: blur(12px);
             }
-            
-            #${config_id} .config_header a {
-                display: inline-block;
-                color: #fefefe;
-                text-decoration: none;
+
+            body#${config_id}.glass .config_header,
+            body#${config_id}.glass #${config_id}_buttons_holder {
+                background: color-mix(in srgb, var(--panel) 90%, transparent);
+                backdrop-filter: blur(12px);
             }
-            
-            #${config_id} .section_header {
-                margin: 12px 0 6px;
-                padding-left: 4px;
-                font-size: 14px;
-                color: #4682b4;
-                background-color: transparent;
-                text-align: left;
-                border: none;
-                border-bottom: solid 2px #add8e6;
+
+            #${config_id} .tooi-title {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                min-width: 0;
             }
-            
+
             #${config_id}_header-title-link {
+                color: var(--text);
+                font-weight: 600;
+                font-size: 1.05em;
+                letter-spacing: -0.01em;
+                text-decoration: none;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
-            
-            #${config_id}_header-donation-link {
-                position: absolute;
-                inset: auto 8px 4px auto ;
-                font-size: 12px;
+
+            #${config_id}_header-title-link:hover {
+                color: var(--accent);
             }
-            
-            #${config_id} button,
-            #${config_id} input[type="button"],
-            #${config_id} input[type="submit"] {
+
+            #${config_id} .tooi-version {
+                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+                font-size: 0.75em;
+                color: var(--muted);
+            }
+
+            #${config_id} .tooi-actions {
+                display: flex;
+                gap: 4px;
+                flex: none;
+            }
+
+            #${config_id} .tooi-icon-button {
+                width: 30px;
+                height: 30px;
+                display: grid;
+                place-items: center;
+                padding: 0;
+                margin: 0;
+                border: 1px solid transparent;
+                border-radius: 8px;
+                background: transparent;
+                color: var(--muted);
+                font-size: 15px;
+                line-height: 1;
+                cursor: pointer;
+                transition: background .15s, color .15s;
+            }
+
+            #${config_id} .tooi-icon-button:hover {
+                background: var(--row-hover);
+                color: var(--text);
+            }
+
+            /* sections */
+            #${config_id} .section_header_holder {
+                margin-top: 14px;
+            }
+
+            #${config_id} .section_header {
+                margin: 0 0 6px;
+                padding: 0 2px;
+                border: none;
+                background: transparent;
+                color: var(--muted);
+                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+                font-size: 0.72em;
+                font-weight: 500;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                text-align: left;
+            }
+
+            /* rows */
+            #${config_id} .config_var {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                margin: 0 0 2px;
+                padding: 8px 10px;
+                border: none;
+                border-radius: 8px;
+                background: var(--row);
+                transition: background .15s;
+            }
+
+            #${config_id} .config_var:hover {
+                background: var(--row-hover);
+            }
+
+            #${config_id} .field_label {
+                display: block;
+                min-width: 0;
+                margin: 0;
+                font-size: 0.93em;
+                font-weight: 400;
+                line-height: 1.35;
+                color: var(--text);
                 cursor: pointer;
             }
-            
-            #${config_id} .warning {
-                font-weight: bolder;
-                color: #ee0000;
-            }
-            
-            #${config_id}_saveBtn {
-            }
-            
-            #${config_id}_save-status {
-                display: inline-block;
-                vertical-align: middle;
-            }
-            
-            #${config_id} .config_var {
-                padding-left: 4px;
-                border-bottom: dotted 1px #add8e6;
-            }
-            
-            #${config_id} .field_label {
-                display: inline-block;
-                min-width: 50%;
-            }
-            
+
             #${config_id} .config_var > div[id] {
                 display: inline-block;
+            }
+
+            /* inputs */
+            #${config_id} select,
+            #${config_id} input[type="text"] {
+                flex: none;
+                width: 220px;
+                max-width: 52%;
+                height: 32px;
+                padding: 0 10px;
+                border: 1px solid var(--field-border);
+                border-radius: 8px;
+                background-color: var(--field);
+                color: var(--text);
+                font-size: 0.9em;
+                outline: none;
+                transition: border-color .15s, box-shadow .15s;
+            }
+
+            #${config_id} select {
+                cursor: pointer;
+            }
+
+            #${config_id} select option {
+                background: var(--panel);
+                color: var(--text);
+            }
+
+            #${config_id} select:focus-visible,
+            #${config_id} input[type="text"]:focus-visible {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+            }
+
+            /* checkbox -> switch */
+            #${config_id} input[type="checkbox"] {
+                -webkit-appearance: none;
+                appearance: none;
+                position: relative;
+                flex: none;
+                order: 2;
+                width: 36px;
+                height: 20px;
+                margin: 0;
+                border-radius: 999px;
+                background: var(--switch-off);
+                cursor: pointer;
+                transition: background .18s ease;
+            }
+
+            #${config_id} input[type="checkbox"]::after {
+                content: "";
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: #fff;
+                box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+                transition: transform .18s ease;
+            }
+
+            #${config_id} input[type="checkbox"]:checked {
+                background: var(--accent);
+            }
+
+            #${config_id} input[type="checkbox"]:checked::after {
+                transform: translateX(16px);
+            }
+
+            #${config_id} input[type="checkbox"]:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+
+            #${config_id} input:disabled {
+                opacity: .4;
+                cursor: not-allowed;
+            }
+
+            /* footer buttons */
+            #${config_id}_buttons_holder {
+                position: sticky;
+                bottom: -14px;
+                z-index: 2;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 8px;
+                margin: 14px -20px 0;
+                padding: 12px 20px;
+                text-align: right;
+                color: var(--text);
+                background: inherit;
+                border-top: 1px solid var(--line);
+            }
+
+
+            #${config_id} .reset_holder {
+                order: -1;
+                margin-right: auto;
+            }
+
+            #${config_id} .reset,
+            #${config_id} .reset a {
+                color: var(--muted);
+                font-size: 0.85em;
+                text-decoration: none;
+            }
+
+            #${config_id} .reset:hover {
+                color: var(--danger);
+            }
+
+            #${config_id} .saveclose_buttons {
+                margin: 0;
+                height: 32px;
+                padding: 0 16px;
+                border-radius: 8px;
+                border: 1px solid var(--field-border);
+                background: transparent;
+                color: var(--text);
+                font-size: 0.9em;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background .15s, filter .15s;
+            }
+
+            #${config_id} .saveclose_buttons:hover {
+                background: var(--row-hover);
+            }
+
+            #${config_id}_saveBtn.saveclose_buttons {
+                border-color: transparent;
+                background: var(--accent);
+                color: var(--accent-text);
+            }
+
+            #${config_id}_saveBtn.saveclose_buttons:hover {
+                background: var(--accent);
+                filter: brightness(1.08);
+            }
+
+            #${config_id}_save-status {
+                display: inline-block;
+                font-size: 0.85em;
+            }
+
+            #${config_id} .warning {
+                font-weight: 500;
+                color: var(--danger);
+            }
+
+            /* credits */
+            #${config_id} .tooi-credits {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 4px 10px;
+                margin-top: 12px;
+                background: var(--row);
+                padding: 10px 12px;
+                border-radius: 10px;
+                border: 1px dashed var(--line);
+                font-size: 0.82em;
+                color: var(--muted);
+            }
+
+            #${config_id} .tooi-credits-label {
+                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+                font-size: 0.85em;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+            }
+
+            #${config_id} .tooi-credits-name {
+                color: var(--text);
+                font-weight: 600;
+            }
+
+            #${config_id} .tooi-credits-links {
+                display: inline-flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            #${config_id} .tooi-credits a {
+                color: var(--accent);
+                text-decoration: none;
+            }
+
+            #${config_id} .tooi-credits a:hover {
+                text-decoration: underline;
+            }
+
+            #${config_id} .tooi-credits a.tooi-donate {
+                color: var(--heart);
+                font-weight: 500;
+            }
+
+            #${config_id} .tooi-credits-maintainer {
+                margin-left: auto;
+                color: var(--faint);
+            }
+
+            #${config_id} .tooi-credits-maintainer a {
+                color: var(--muted);
+            }
+
+            /* narrow screens: stack rows */
+            @media (max-width: 520px) {
+                body#${config_id} { padding: 8px; }
+                #${config_id}_wrapper { max-height: calc(100vh - 16px); padding: 0 14px 12px; }
+                #${config_id} .config_header,
+                #${config_id}_buttons_holder { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+                #${config_id} .config_var:has(select),
+                #${config_id} .config_var:has(input[type="text"]) { flex-direction: column; align-items: stretch; gap: 6px; }
+                #${config_id} select,
+                #${config_id} input[type="text"] { width: 100%; max-width: none; }
+                #${config_id} .tooi-credits-maintainer { margin-left: 0; }
             }
         `,
     } );
