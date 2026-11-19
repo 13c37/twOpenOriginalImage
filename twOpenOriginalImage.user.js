@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.25
+// @version         0.1.26
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
@@ -2286,7 +2286,31 @@ function initialize( user_options ) {
                 }
                 
                 button.className = 'btn';
-                button.textContent = escape_html( OPTIONS.BUTTON_TEXT );
+                if ( is_react_twitter() ) {
+                    // X-style action: icon + optional label (empty label = icon only)
+                    var ns = 'http://www.w3.org/2000/svg',
+                        icon = d.createElementNS( ns, 'svg' ),
+                        icon_path = d.createElementNS( ns, 'path' ),
+                        label_text = String( OPTIONS.BUTTON_TEXT || '' ).trim();
+                    
+                    icon.setAttribute( 'viewBox', '0 0 24 24' );
+                    icon.setAttribute( 'aria-hidden', 'true' );
+                    icon.setAttribute( 'class', SCRIPT_NAME + '-icon' );
+                    icon_path.setAttribute( 'd', 'M3 3h7v2H6.41l4.3 4.29-1.42 1.42L5 6.41V10H3V3zm18 0v7h-2V6.41l-4.29 4.3-1.42-1.42L17.59 5H14V3h7zM3 21v-7h2v3.59l4.29-4.3 1.42 1.42L6.41 19H10v2H3zm18 0h-7v-2h3.59l-4.3-4.29 1.42-1.42L19 17.59V14h2v7z' );
+                    icon.appendChild( icon_path );
+                    button.appendChild( icon );
+                    button.setAttribute( 'aria-label', label_text || 'Original' );
+                    
+                    if ( label_text ) {
+                        var label = d.createElement( 'span' );
+                        label.className = SCRIPT_NAME + '-label';
+                        label.textContent = label_text;
+                        button.appendChild( label );
+                    }
+                }
+                else {
+                    button.textContent = escape_html( OPTIONS.BUTTON_TEXT );
+                }
                 button_container_template.className = 'ProfileTweet-action ' + button_container_classname + ' js-tooltip';
                 button_container_template.appendChild( button );
                 
@@ -5377,7 +5401,16 @@ function initialize( user_options ) {
             css_rule_lines.push( button_selector + '{font-size: 12px;}' );
             // TODO: [夜間モード対応] TweetDeck の場合 html.dark で判別がつく一方、Twitter の場合 CSS ファイルそのものを入れ替えている→ CSSルールでの切替困難
             
-            if ( is_react_page() ) {
+            if ( is_react_twitter() ) {
+                // Match X's own action bar (font, colour, hover circle)
+                css_rule_lines.push( '.' + SCRIPT_NAME + 'Button{display:flex; align-items:center; float:none !important;}' );
+                css_rule_lines.push( button_selector + '{display:inline-flex; align-items:center; gap:4px; height:34px; min-height:34px; margin:0 !important; padding:0 8px; border:0; border-radius:9999px; background:transparent; color:rgb(83, 100, 113); font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:13px; font-weight:400; line-height:16px; white-space:nowrap; cursor:pointer; transition:color .2s, background-color .2s; -webkit-font-smoothing:antialiased;}' );
+                css_rule_lines.push( button_selector + ' .' + SCRIPT_NAME + '-icon{width:18.75px; height:18.75px; flex:none; fill:currentColor;}' );
+                css_rule_lines.push( button_selector + ':hover, ' + button_selector + ':focus-visible{color:rgb(29, 155, 240); background-color:rgba(29, 155, 240, 0.1); outline:none;}' );
+                css_rule_lines.push( 'body[data-nightmode="true"] ' + button_selector + '{color:rgb(113, 118, 123);}' );
+                css_rule_lines.push( 'body[data-nightmode="true"] ' + button_selector + ':hover, body[data-nightmode="true"] ' + button_selector + ':focus-visible{color:rgb(29, 155, 240);}' );
+            }
+            else if ( is_react_page() ) {
                 css_rule_lines.push( button_selector + '{background-image: linear-gradient(rgb(255, 255, 255), rgb(245, 248, 250)); background-color: rgb(245, 248, 250); color: rgb(102, 117, 127); cursor: pointer; display: inline-block; position: relative; border-width: 1px; border-style: solid; border-color: rgb(230, 236, 240); border-radius: 4px;}' );
                 css_rule_lines.push( button_selector + ':hover {color: rgb(20, 23, 26); background-color: rgb(230, 236, 240); background-image: linear-gradient(rgb(255, 255, 255), rgb(230, 236, 240)); text-decoration: none; border-color: rgb(230, 236, 240);}' );
                 css_rule_lines.push( 'body[data-nightmode="true"] ' + button_selector + '{background-color: #182430; background-image: none; border: 1px solid #38444d; border-radius: 4px; color: #8899a6; display: inline-block;}' );
@@ -5600,42 +5633,42 @@ async function init_gm_menu() {
     Object.assign( messages, ( language == 'ja' ) ? {
         "SEC_CLICK": "クリック動作",
         "SEC_VIEWER": "表示",
-        "SEC_BUTTON": "ボタン",
+        "SEC_BUTTON": "投稿のボタン",
         "SEC_DOWNLOAD": "ダウンロード",
         "SEC_GENERAL": "全般",
-        "DEFAULT_ACTION_ON_CLICK_EVENT": "クリック",
+        "DEFAULT_ACTION_ON_CLICK_EVENT": "ボタンをクリック",
         "DEFAULT_ACTION_ON_ALT_CLICK_EVENT": "Alt + クリック",
         "DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT": "Shift + クリック",
         "DISPLAY_OVERLAY": "オーバーレイで開く（同じタブ）",
         "OVERRIDE_CLICK_EVENT": "画像クリックで原寸画像を開く",
         "SWAP_IMAGE_URL": "タイムラインの画像を原寸で読み込む（通信量増）",
         "DISPLAY_ORIGINAL_BUTTONS": "ツイートにボタンを表示",
-        "BUTTON_TEXT_HEADER": "ボタンのテキスト",
+        "BUTTON_TEXT_HEADER": "ラベル（空欄でアイコンのみ）",
         "DOWNLOAD_HELPER_IS_VALID_HEADER": "画像ページにダウンロードボタン",
         "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "オーバーレイ時にダウンロードボタンを自動で隠す",
         "SAME_FILENAME_AS_IN_ZIP": "個別保存でもZIPと同じファイル名",
         "SUPPRESS_FILENAME_SUFFIX": "ファイル名の「-orig」を省く",
-        "OPERATION": "有効",
+        "OPERATION": "スクリプトを有効にする",
         "NOT_SAVED": "未保存の変更",
     } : {
         "SEC_CLICK": "Click actions",
         "SEC_VIEWER": "Viewer",
-        "SEC_BUTTON": "Button",
+        "SEC_BUTTON": "Post button",
         "SEC_DOWNLOAD": "Downloads",
         "SEC_GENERAL": "General",
-        "DEFAULT_ACTION_ON_CLICK_EVENT": "Click",
+        "DEFAULT_ACTION_ON_CLICK_EVENT": "Button click",
         "DEFAULT_ACTION_ON_ALT_CLICK_EVENT": "Alt + click",
         "DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT": "Shift + click",
         "DISPLAY_OVERLAY": "Open in overlay (same tab)",
         "OVERRIDE_CLICK_EVENT": "Clicking a photo opens the original",
         "SWAP_IMAGE_URL": "Load timeline photos in original size (more data)",
         "DISPLAY_ORIGINAL_BUTTONS": "Show button on posts",
-        "BUTTON_TEXT_HEADER": "Button label",
+        "BUTTON_TEXT_HEADER": "Label (empty = icon only)",
         "DOWNLOAD_HELPER_IS_VALID_HEADER": "Download button on image pages",
         "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "Auto-hide download button in overlay",
         "SAME_FILENAME_AS_IN_ZIP": "Single downloads use ZIP file names",
         "SUPPRESS_FILENAME_SUFFIX": "Drop \u201c-orig\u201d from file names",
-        "OPERATION": "Enabled",
+        "OPERATION": "Script enabled",
         "NOT_SAVED": "Unsaved changes",
     } );
     
@@ -5650,12 +5683,51 @@ async function init_gm_menu() {
         title : `${messages.ext_title} version ${GM_info.script.version}`,
         frameStyle : 'position: fixed; inset: 0; top: 0; left: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: none; display: none; opacity: 0; z-index: 99999; background: transparent; color-scheme: normal; transition: background-color .2s ease;',
         fields : {
+            OPERATION : {
+                label : messages.OPERATION,
+                type : 'checkbox',
+                default : OPTIONS.OPERATION,
+                section : messages.SEC_GENERAL,
+            },
+            UI_THEME : {
+                label : messages.UI_THEME,
+                type : 'select',
+                options : [ 'auto', 'dark', 'light' ],
+                default : 'auto',
+            },
+            DISPLAY_ORIGINAL_BUTTONS : {
+                label : messages.DISPLAY_ORIGINAL_BUTTONS,
+                type : 'checkbox',
+                default : OPTIONS.DISPLAY_ORIGINAL_BUTTONS,
+                section : messages.SEC_BUTTON,
+            },
+            BUTTON_TEXT : {
+                label : messages.BUTTON_TEXT_HEADER,
+                type : 'text',
+                default : OPTIONS.BUTTON_TEXT,
+            },
+            DISPLAY_OVERLAY : {
+                label : messages.DISPLAY_OVERLAY,
+                type : 'checkbox',
+                default : OPTIONS.DISPLAY_OVERLAY,
+                section : messages.SEC_VIEWER,
+            },
+            SWAP_IMAGE_URL : {
+                label : messages.SWAP_IMAGE_URL,
+                type : 'checkbox',
+                default : OPTIONS.SWAP_IMAGE_URL,
+            },
+            OVERRIDE_CLICK_EVENT : {
+                label : messages.OVERRIDE_CLICK_EVENT,
+                type : 'checkbox',
+                default : OPTIONS.OVERRIDE_CLICK_EVENT,
+                section : messages.SEC_CLICK,
+            },
             DEFAULT_ACTION_ON_CLICK_EVENT : {
                 label : messages.DEFAULT_ACTION_ON_CLICK_EVENT,
                 type : 'select',
                 options : [ 'display_all', 'display_one', 'download_one', 'download_all', 'download_zip' ],
                 default : 'display_all',
-                section : messages.SEC_CLICK,
             },
             DEFAULT_ACTION_ON_ALT_CLICK_EVENT : {
                 label : messages.DEFAULT_ACTION_ON_ALT_CLICK_EVENT,
@@ -5668,33 +5740,6 @@ async function init_gm_menu() {
                 type : 'select',
                 options : [ 'display_all', 'display_one', 'download_one', 'download_all', 'download_zip', 'do_nothing' ],
                 default : 'download_one',
-            },
-            OVERRIDE_CLICK_EVENT : {
-                label : messages.OVERRIDE_CLICK_EVENT,
-                type : 'checkbox',
-                default : OPTIONS.OVERRIDE_CLICK_EVENT,
-                section : messages.SEC_VIEWER,
-            },
-            DISPLAY_OVERLAY : {
-                label : messages.DISPLAY_OVERLAY,
-                type : 'checkbox',
-                default : OPTIONS.DISPLAY_OVERLAY,
-            },
-            SWAP_IMAGE_URL : {
-                label : messages.SWAP_IMAGE_URL,
-                type : 'checkbox',
-                default : OPTIONS.SWAP_IMAGE_URL,
-            },
-            DISPLAY_ORIGINAL_BUTTONS : {
-                label : messages.DISPLAY_ORIGINAL_BUTTONS,
-                type : 'checkbox',
-                default : OPTIONS.DISPLAY_ORIGINAL_BUTTONS,
-                section : messages.SEC_BUTTON,
-            },
-            BUTTON_TEXT : {
-                label : messages.BUTTON_TEXT_HEADER,
-                type : 'text',
-                default : OPTIONS.BUTTON_TEXT,
             },
             DOWNLOAD_HELPER_SCRIPT_IS_VALID : {
                 label : messages.DOWNLOAD_HELPER_IS_VALID_HEADER,
@@ -5716,18 +5761,6 @@ async function init_gm_menu() {
                 label : messages.SUPPRESS_FILENAME_SUFFIX,
                 type : 'checkbox',
                 default : OPTIONS.SUPPRESS_FILENAME_SUFFIX,
-            },
-            UI_THEME : {
-                label : messages.UI_THEME,
-                type : 'select',
-                options : [ 'auto', 'dark', 'light' ],
-                default : 'auto',
-                section : messages.SEC_GENERAL,
-            },
-            OPERATION : {
-                label : messages.OPERATION,
-                type : 'checkbox',
-                default : OPTIONS.OPERATION,
             },
         },
         events : {
@@ -5837,7 +5870,7 @@ async function init_gm_menu() {
                         make_link( '13c37', 'https://github.com/13c37/twOpenOriginalImage' )
                     )
                 );
-                config_header.after( credits );
+                frame_doc.querySelector( `#${config_id}_buttons_holder` ).before( credits );
                 
                 // Theme select labels
                 if ( theme_field.node ) {
@@ -5858,13 +5891,58 @@ async function init_gm_menu() {
                 }
                 sync_button_text();
                 
+                // Grey out all options while the script is disabled
+                var operation_field = GM_config.fields[ 'OPERATION' ],
+                    sync_enabled = () => {
+                        if ( operation_field.node ) {
+                            body.classList.toggle( 'tooi-off', ! operation_field.node.checked );
+                        }
+                    };
+                if ( operation_field.node ) {
+                    operation_field.node.addEventListener( 'change', sync_enabled );
+                    operation_field.wrapper.classList.add( 'tooi-master' );
+                    theme_field.wrapper && theme_field.wrapper.classList.add( 'tooi-master' );
+                }
+                sync_enabled();
+                
+                // Use X's own font (Chirp) inside the dialog when the page has it
+                try {
+                    var font_rules = [];
+                    [ ... document.styleSheets ].forEach( sheet => {
+                        var rules;
+                        try { rules = sheet.cssRules; } catch ( error ) { return; }
+                        [ ... rules ].forEach( rule => {
+                            if ( ( rule.type == CSSRule.FONT_FACE_RULE ) && /chirp/i.test( rule.style.getPropertyValue( 'font-family' ) ) ) {
+                                font_rules.push( rule.cssText );
+                            }
+                        } );
+                    } );
+                    if ( 0 < font_rules.length ) {
+                        frame_doc.head.appendChild( make( 'style', { textContent : font_rules.join( '\n' ) } ) );
+                    }
+                }
+                catch ( error ) {
+                }
+                
+                // Landscape layout: General / Post button / Viewer | Click actions / Downloads
+                var wrapper = frame_doc.querySelector( `#${config_id}_wrapper` ),
+                    sections = [ ... wrapper.querySelectorAll( ':scope > .section_header_holder' ) ],
+                    grid = make( 'div', { className : 'tooi-grid' } ),
+                    left_column = make( 'div', { className : 'tooi-col' } ),
+                    right_column = make( 'div', { className : 'tooi-col' } );
+                if ( 0 < sections.length ) {
+                    sections[ 0 ].before( grid );
+                    sections.forEach( ( section, index ) => ( index < 3 ? left_column : right_column ).appendChild( section ) );
+                    grid.append( left_column, right_column );
+                }
+                
                 // Live "unsaved" status while typing
                 frame_doc.querySelector( `#${config_id}_wrapper` ).addEventListener( 'input', () => update_save_status(), false );
                 if ( dark_query.addEventListener ) {
                     dark_query.addEventListener( 'change', apply_ui );
                 }
                 apply_ui();
-                frame_doc.querySelector( `#${config_id}_resetLink` ).addEventListener( 'click', () => setTimeout( () => { apply_ui(); sync_button_text(); }, 0 ) );
+                frame_doc.querySelector( `#${config_id}_resetLink` ).addEventListener( 'click', () => setTimeout( () => { apply_ui(); sync_button_text(); sync_enabled(); }, 0 ) );
                 
                 // Click on the dimmed backdrop closes the dialog
                 frame_doc.addEventListener( 'mousedown', event => {
@@ -5968,20 +6046,22 @@ async function init_gm_menu() {
             }
 
             body#${config_id} {
-                --panel: #121419;
-                --row-hover: rgb(255 255 255 / 0.045);
-                --line: rgb(255 255 255 / 0.08);
-                --text: #e6e8ec;
-                --muted: #8b919c;
-                --faint: #5d636e;
-                --accent: #8fb3ff;
-                --accent-text: #0b1020;
-                --field: rgb(255 255 255 / 0.05);
-                --field-border: rgb(255 255 255 / 0.13);
-                --switch-off: rgb(255 255 255 / 0.18);
-                --danger: #ff8a8a;
-                --heart: #ff8fb0;
-                --shadow: 0 24px 64px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.07);
+                /* X dark palette */
+                --panel: #000000;
+                --row-hover: rgb(231 233 234 / 0.04);
+                --line: rgb(47 51 54);
+                --text: #e7e9ea;
+                --muted: rgb(113 118 123);
+                --faint: rgb(83 88 93);
+                --accent: rgb(29 155 240);
+                --field: transparent;
+                --field-border: rgb(51 54 57);
+                --switch-off: rgb(62 65 68);
+                --primary: #eff3f4;
+                --primary-text: #0f1419;
+                --danger: rgb(244 33 46);
+                --heart: rgb(249 24 128);
+                --shadow: 0 0 15px rgb(255 255 255 / 0.18), 0 0 3px 1px rgb(255 255 255 / 0.14);
 
                 margin: 0;
                 min-height: 100vh;
@@ -5991,41 +6071,40 @@ async function init_gm_menu() {
                 align-items: center;
                 justify-content: center;
                 background: transparent !important;
-                font-size: 14px;
+                font-size: 15px;
                 -webkit-font-smoothing: antialiased;
             }
 
             body#${config_id}[data-theme="light"] {
-                --panel: #fbfbfc;
-                --row-hover: rgb(0 0 0 / 0.035);
-                --line: rgb(0 0 0 / 0.08);
-                --text: #16181d;
-                --muted: #5f6672;
-                --faint: #9097a3;
-                --accent: #2f5bd3;
-                --accent-text: #ffffff;
-                --field: #ffffff;
-                --field-border: rgb(0 0 0 / 0.15);
-                --switch-off: rgb(0 0 0 / 0.2);
-                --danger: #c62828;
-                --heart: #d6336c;
-                --shadow: 0 24px 64px rgb(0 0 0 / 0.2), 0 0 0 1px rgb(0 0 0 / 0.07);
+                /* X light palette */
+                --panel: #ffffff;
+                --row-hover: rgb(15 20 25 / 0.035);
+                --line: rgb(239 243 244);
+                --text: #0f1419;
+                --muted: rgb(83 100 113);
+                --faint: rgb(139 152 165);
+                --field: transparent;
+                --field-border: rgb(207 217 222);
+                --switch-off: rgb(207 217 222);
+                --primary: #0f1419;
+                --primary-text: #ffffff;
+                --shadow: 0 0 15px rgb(101 119 134 / 0.2), 0 0 3px 1px rgb(101 119 134 / 0.15);
             }
 
             #${config_id} * {
-                font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+                font-family: TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
                 box-sizing: border-box;
             }
 
             #${config_id}_wrapper {
                 color-scheme: dark;
-                width: min(600px, 100%);
+                width: min(1000px, 100%);
                 max-height: calc(100vh - 32px);
                 overflow: auto;
                 overscroll-behavior: contain;
                 scrollbar-width: thin;
-                padding: 0 18px;
-                border-radius: 12px;
+                padding: 0 20px;
+                border-radius: 16px;
                 background: var(--panel);
                 color: var(--text);
                 box-shadow: var(--shadow);
@@ -6044,9 +6123,8 @@ async function init_gm_menu() {
                 align-items: center;
                 justify-content: space-between;
                 gap: 12px;
-                margin: 0 -18px;
-                padding: 10px 12px 10px 18px;
-                font-size: 1rem;
+                margin: 0 -20px;
+                padding: 12px 14px 12px 20px;
                 text-align: left;
                 background: var(--panel);
                 border-bottom: 1px solid var(--line);
@@ -6061,8 +6139,8 @@ async function init_gm_menu() {
 
             #${config_id}_header-title-link {
                 color: var(--text);
-                font-weight: 600;
-                font-size: 15px;
+                font-size: 20px;
+                font-weight: 700;
                 text-decoration: none;
                 white-space: nowrap;
                 overflow: hidden;
@@ -6070,113 +6148,69 @@ async function init_gm_menu() {
             }
 
             #${config_id}_header-title-link:hover {
-                color: var(--accent);
+                text-decoration: underline;
             }
 
             #${config_id} .tooi-version {
-                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
-                font-size: 11px;
+                font-size: 13px;
                 color: var(--muted);
             }
 
             #${config_id} .tooi-actions {
                 display: flex;
-                gap: 2px;
+                gap: 4px;
                 flex: none;
             }
 
             #${config_id} .tooi-icon-button {
-                width: 28px;
-                height: 28px;
+                width: 34px;
+                height: 34px;
                 display: grid;
                 place-items: center;
                 padding: 0;
                 margin: 0;
                 border: none;
-                border-radius: 6px;
+                border-radius: 9999px;
                 background: transparent;
-                color: var(--muted);
-                font-size: 14px;
+                color: var(--text);
+                font-size: 16px;
                 line-height: 1;
                 cursor: pointer;
             }
 
+            #${config_id} .tooi-icon-button svg {
+                width: 18px;
+                height: 18px;
+            }
+
             #${config_id} .tooi-icon-button:hover {
                 background: var(--row-hover);
-                color: var(--text);
             }
 
-            /* credits */
-            #${config_id} .tooi-credits {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: baseline;
-                gap: 2px 10px;
-                margin: 10px 0 2px;
-                padding: 7px 10px;
-                border-radius: 8px;
-                border: 1px dashed var(--line);
-                font-size: 12px;
-                color: var(--muted);
+            /* landscape: two columns of sections */
+            #${config_id} .tooi-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0 32px;
+                padding: 4px 0 12px;
             }
 
-            #${config_id} .tooi-credits-label {
-                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
-                font-size: 10px;
-                letter-spacing: 0.1em;
-                text-transform: uppercase;
+            #${config_id} .tooi-col {
+                min-width: 0;
             }
 
-            #${config_id} .tooi-credits-name {
-                color: var(--text);
-                font-weight: 600;
-            }
-
-            #${config_id} .tooi-credits-links {
-                display: inline-flex;
-                flex-wrap: wrap;
-                gap: 10px;
-            }
-
-            #${config_id} .tooi-credits a {
-                color: var(--accent);
-                text-decoration: none;
-            }
-
-            #${config_id} .tooi-credits a:hover {
-                text-decoration: underline;
-            }
-
-            #${config_id} .tooi-credits a.tooi-donate {
-                color: var(--heart);
-                font-weight: 500;
-            }
-
-            #${config_id} .tooi-credits-maintainer {
-                margin-left: auto;
-                color: var(--faint);
-            }
-
-            #${config_id} .tooi-credits-maintainer a {
-                color: var(--muted);
-            }
-
-            /* sections */
             #${config_id} .section_header_holder {
-                margin-top: 10px;
+                margin-top: 14px;
             }
 
             #${config_id} .section_header {
-                margin: 0 0 2px;
+                margin: 0 0 4px;
                 padding: 0 8px;
                 border: none;
                 background: transparent;
-                color: var(--muted);
-                font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
-                font-size: 10.5px;
-                font-weight: 500;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
+                color: var(--text);
+                font-size: 15px;
+                font-weight: 700;
                 text-align: left;
             }
 
@@ -6186,10 +6220,10 @@ async function init_gm_menu() {
                 align-items: center;
                 justify-content: space-between;
                 gap: 16px;
-                min-height: 34px;
+                min-height: 40px;
                 margin: 0;
-                padding: 3px 8px;
-                border-radius: 6px;
+                padding: 4px 8px;
+                border-radius: 8px;
             }
 
             #${config_id} .config_var:hover {
@@ -6204,9 +6238,9 @@ async function init_gm_menu() {
                 display: block;
                 min-width: 0;
                 margin: 0;
-                font-size: 13.5px;
+                font-size: 15px;
                 font-weight: 400;
-                line-height: 1.3;
+                line-height: 20px;
                 color: var(--text);
                 cursor: pointer;
             }
@@ -6215,15 +6249,15 @@ async function init_gm_menu() {
             #${config_id} select,
             #${config_id} input[type="text"] {
                 flex: none;
-                width: 230px;
-                max-width: 55%;
-                height: 28px;
+                width: 232px;
+                max-width: 60%;
+                height: 32px;
                 padding: 0 8px;
                 border: 1px solid var(--field-border);
-                border-radius: 6px;
+                border-radius: 4px;
                 background-color: var(--field);
                 color: var(--text);
-                font-size: 13px;
+                font-size: 14px;
                 outline: none;
             }
 
@@ -6239,19 +6273,19 @@ async function init_gm_menu() {
             #${config_id} select:focus-visible,
             #${config_id} input[type="text"]:focus-visible {
                 border-color: var(--accent);
-                box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+                box-shadow: 0 0 0 1px var(--accent);
             }
 
-            /* checkbox -> switch */
+            /* checkbox -> switch (X blue) */
             #${config_id} input[type="checkbox"] {
                 -webkit-appearance: none;
                 appearance: none;
                 position: relative;
                 flex: none;
-                width: 34px;
-                height: 19px;
+                width: 38px;
+                height: 22px;
                 margin: 0;
-                border-radius: 999px;
+                border-radius: 9999px;
                 background: var(--switch-off);
                 cursor: pointer;
                 transition: background .15s ease;
@@ -6262,8 +6296,8 @@ async function init_gm_menu() {
                 position: absolute;
                 top: 3px;
                 left: 3px;
-                width: 13px;
-                height: 13px;
+                width: 16px;
+                height: 16px;
                 border-radius: 50%;
                 background: #fff;
                 transition: transform .15s ease;
@@ -6274,7 +6308,7 @@ async function init_gm_menu() {
             }
 
             #${config_id} input[type="checkbox"]:checked::after {
-                transform: translateX(15px);
+                transform: translateX(16px);
             }
 
             #${config_id} input[type="checkbox"]:focus-visible {
@@ -6284,8 +6318,55 @@ async function init_gm_menu() {
 
             #${config_id} input:disabled,
             #${config_id} button:disabled {
-                opacity: .4;
+                opacity: .45;
                 cursor: default;
+            }
+
+            /* credits (bottom) */
+            #${config_id} .tooi-credits {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 4px 14px;
+                margin: 0 -20px;
+                padding: 10px 20px;
+                border-top: 1px solid var(--line);
+                font-size: 13px;
+                color: var(--muted);
+            }
+
+            #${config_id} .tooi-credits-name {
+                color: var(--text);
+                font-weight: 700;
+            }
+
+            #${config_id} .tooi-credits-links {
+                display: inline-flex;
+                flex-wrap: wrap;
+                gap: 14px;
+            }
+
+            #${config_id} .tooi-credits a {
+                color: var(--accent);
+                text-decoration: none;
+            }
+
+            #${config_id} .tooi-credits a:hover {
+                text-decoration: underline;
+            }
+
+            #${config_id} .tooi-credits a.tooi-donate {
+                color: var(--heart);
+                font-weight: 700;
+            }
+
+            #${config_id} .tooi-credits-maintainer {
+                margin-left: auto;
+                color: var(--muted);
+            }
+
+            #${config_id} .tooi-credits-maintainer a {
+                color: var(--muted);
             }
 
             /* footer */
@@ -6296,9 +6377,9 @@ async function init_gm_menu() {
                 display: flex;
                 align-items: center;
                 justify-content: flex-end;
-                gap: 8px;
-                margin: 10px -18px 0;
-                padding: 10px 18px;
+                gap: 10px;
+                margin: 0 -20px;
+                padding: 12px 20px;
                 color: var(--text);
                 background: var(--panel);
                 border-top: 1px solid var(--line);
@@ -6312,7 +6393,7 @@ async function init_gm_menu() {
             #${config_id} .reset,
             #${config_id} .reset a {
                 color: var(--muted);
-                font-size: 12px;
+                font-size: 14px;
                 text-decoration: none;
             }
 
@@ -6322,14 +6403,14 @@ async function init_gm_menu() {
 
             #${config_id} .saveclose_buttons {
                 margin: 0;
-                height: 30px;
-                padding: 0 16px;
-                border-radius: 6px;
+                height: 36px;
+                padding: 0 18px;
+                border-radius: 9999px;
                 border: 1px solid var(--field-border);
                 background: transparent;
                 color: var(--text);
-                font-size: 13px;
-                font-weight: 500;
+                font-size: 15px;
+                font-weight: 700;
                 cursor: pointer;
             }
 
@@ -6339,29 +6420,39 @@ async function init_gm_menu() {
 
             #${config_id}_saveBtn.saveclose_buttons {
                 border-color: transparent;
-                background: var(--accent);
-                color: var(--accent-text);
+                background: var(--primary);
+                color: var(--primary-text);
             }
 
             #${config_id}_saveBtn.saveclose_buttons:not(:disabled):hover {
-                background: var(--accent);
-                filter: brightness(1.08);
+                background: var(--primary);
+                filter: brightness(0.88);
             }
 
             #${config_id}_save-status {
-                font-size: 12px;
+                font-size: 14px;
             }
 
             #${config_id} .warning {
-                font-weight: 500;
+                font-weight: 700;
                 color: var(--danger);
+            }
+
+            /* script disabled: grey out everything except the General switches */
+            body#${config_id}.tooi-off .config_var:not(.tooi-master) {
+                opacity: .4;
+            }
+
+            /* narrow windows: one column */
+            @media (max-width: 760px) {
+                #${config_id} .tooi-grid { grid-template-columns: 1fr; }
             }
 
             @media (max-width: 520px) {
                 body#${config_id} { padding: 8px; }
                 #${config_id}_wrapper { max-height: calc(100vh - 16px); }
                 #${config_id} .config_var:has(select),
-                #${config_id} .config_var:has(input[type="text"]) { flex-direction: column; align-items: stretch; gap: 4px; padding: 6px 8px; }
+                #${config_id} .config_var:has(input[type="text"]) { flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; }
                 #${config_id} select,
                 #${config_id} input[type="text"] { width: 100%; max-width: none; }
                 #${config_id} .tooi-credits-maintainer { margin-left: 0; }

@@ -13,7 +13,7 @@ Updates arrive automatically through your userscript manager.
 
 ## Usage
 
-Hover a post with images and use the **Original** button:
+Use the **Original** button in the action bar of any post with photos:
 
 | Action | Default |
 |---|---|
@@ -21,13 +21,18 @@ Hover a post with images and use the **Original** button:
 | One image per page | <kbd>Alt</kbd> + Click |
 | Download selected image | <kbd>Shift</kbd> + Click |
 
-Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) is under *General* or the ◐ button in the dialog header.
+Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) is under *General*, or use the ◐ button in the dialog header.
 
 ## Bugs
 
 Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the post URL and your browser + userscript manager.
 
 ## Changelog
+
+### 0.1.26
+- **Post button now looks like X's own actions**: X's font (Chirp), grey icon + label, blue hover circle. Empty label = icon only.
+- **Settings in landscape** (two columns, no scrolling), ordered by importance: General → Post button → Viewer | Click actions → Downloads. Credits moved to the bottom.
+- Settings use X's colours, font, pill buttons and switches. Turning the script off greys out every other option.
 
 ### 0.1.25
 - Settings fit on one screen (no scrolling at 1080p / 1440p): compact grouped list — Click actions, Viewer, Button, Downloads, General.
