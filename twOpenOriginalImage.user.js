@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.29
+// @version         0.1.30
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
@@ -2291,7 +2291,7 @@ function initialize( user_options ) {
                     var ns = 'http://www.w3.org/2000/svg',
                         icon = d.createElementNS( ns, 'svg' ),
                         icon_path = d.createElementNS( ns, 'path' ),
-                        label_text = ''; // icon only
+                        label_text = String( OPTIONS.BUTTON_TEXT || '' ).trim(); // empty = icon only
                     
                     icon.setAttribute( 'viewBox', '0 0 24 24' );
                     icon.setAttribute( 'aria-hidden', 'true' );
@@ -2309,7 +2309,7 @@ function initialize( user_options ) {
                     }
                 }
                 else {
-                    button.textContent = escape_html( OPTIONS.BUTTON_TEXT );
+                    button.textContent = escape_html( OPTIONS.BUTTON_TEXT || 'Original' );
                 }
                 button_container_template.className = 'ProfileTweet-action ' + button_container_classname + ' js-tooltip';
                 button_container_template.appendChild( button );
@@ -5416,7 +5416,8 @@ function initialize( user_options ) {
             if ( is_react_twitter() ) {
                 // Match X's own action bar (font, colour, hover circle)
                 css_rule_lines.push( '.' + SCRIPT_NAME + 'Button{display:flex; align-items:center; float:none !important;}' );
-                css_rule_lines.push( button_selector + '{display:inline-flex; align-items:center; justify-content:center; gap:4px; width:34px; height:34px; min-height:34px; margin:0 !important; padding:0; border:0; border-radius:9999px; background:transparent; color:rgb(83, 100, 113); font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:13px; font-weight:400; line-height:16px; white-space:nowrap; cursor:pointer; transition:color .2s, background-color .2s; -webkit-font-smoothing:antialiased;}' );
+                css_rule_lines.push( button_selector + '{display:inline-flex; align-items:center; justify-content:center; gap:4px; min-width:34px; height:34px; min-height:34px; margin:0 !important; padding:0 8px; border:0; border-radius:9999px; background:transparent; color:rgb(83, 100, 113); font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:13px; font-weight:400; line-height:16px; white-space:nowrap; cursor:pointer; transition:color .2s, background-color .2s; -webkit-font-smoothing:antialiased;}' );
+                css_rule_lines.push( button_selector + ':not(:has(.' + SCRIPT_NAME + '-label)){width:34px; padding:0;}' );
                 css_rule_lines.push( button_selector + ' .' + SCRIPT_NAME + '-icon{width:18.75px; height:18.75px; flex:none; fill:currentColor;}' );
                 css_rule_lines.push( button_selector + ':hover{color:rgb(29, 155, 240); background-color:rgba(29, 155, 240, 0.1);}' );
                 css_rule_lines.push( button_selector + ':focus{outline:none;}' );
@@ -5658,8 +5659,9 @@ async function init_gm_menu() {
         "DISPLAY_OVERLAY": "オーバーレイで開く（同じタブ）",
         "OVERRIDE_CLICK_EVENT": "画像クリックで原寸画像を開く",
         "SWAP_IMAGE_URL": "タイムラインの画像を原寸で読み込む（通信量増）",
-        "DISPLAY_ORIGINAL_BUTTONS": "ツイートにアイコンボタンを表示",
+        "DISPLAY_ORIGINAL_BUTTONS": "ツイートにボタンを表示",
         "BUTTON_TEXT_HEADER": "ラベル（空欄でアイコンのみ）",
+        "BUTTON_TEXT_PLACEHOLDER": "例: 原寸画像",
         "DOWNLOAD_HELPER_IS_VALID_HEADER": "画像ページにダウンロードボタン",
         "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "オーバーレイ時にダウンロードボタンを自動で隠す",
         "SAME_FILENAME_AS_IN_ZIP": "個別保存でもZIPと同じファイル名",
@@ -5678,8 +5680,9 @@ async function init_gm_menu() {
         "DISPLAY_OVERLAY": "Open in overlay (same tab)",
         "OVERRIDE_CLICK_EVENT": "Clicking a photo opens the original",
         "SWAP_IMAGE_URL": "Load timeline photos in original size (more data)",
-        "DISPLAY_ORIGINAL_BUTTONS": "Show icon button on posts",
+        "DISPLAY_ORIGINAL_BUTTONS": "Show button on posts",
         "BUTTON_TEXT_HEADER": "Label (empty = icon only)",
+        "BUTTON_TEXT_PLACEHOLDER": "e.g. Original",
         "DOWNLOAD_HELPER_IS_VALID_HEADER": "Download button on image pages",
         "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "Auto-hide download button in overlay",
         "SAME_FILENAME_AS_IN_ZIP": "Single downloads use ZIP file names",
@@ -5721,6 +5724,11 @@ async function init_gm_menu() {
                 type : 'checkbox',
                 default : OPTIONS.DISPLAY_ORIGINAL_BUTTONS,
                 section : messages.SEC_BUTTON,
+            },
+            BUTTON_TEXT : {
+                label : messages.BUTTON_TEXT_HEADER,
+                type : 'text',
+                default : '',
             },
             DISPLAY_OVERLAY : {
                 label : messages.DISPLAY_OVERLAY,
@@ -5909,6 +5917,10 @@ async function init_gm_menu() {
                     buttons_field.node.addEventListener( 'change', sync_button_text );
                 }
                 sync_button_text();
+                if ( text_field && text_field.node ) {
+                    text_field.node.placeholder = messages.BUTTON_TEXT_PLACEHOLDER;
+                    text_field.node.spellcheck = false;
+                }
                 
                 // Grey out all options while the script is disabled
                 var operation_field = GM_config.fields[ 'OPERATION' ],

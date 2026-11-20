@@ -29,9 +29,12 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Changelog
 
+### 0.1.30
+- Post button is **off by default** (just click a photo — it opens the original). Turn it on under *Post button*.
+- Label is **empty by default** = icon only, sized like X's own icons. Type a label (placeholder: "e.g. Original") to show text next to the icon.
+
 ### 0.1.29
-- Post button is now **off by default** (just click a photo — it opens the original). Turn it on under *Post button*.
-- When on, it's an icon only (no "Original" text), sized like X's own action icons. Label setting removed.
+- Post button off by default, icon only.
 
 ### 0.1.28
 - Post button no longer stays highlighted after you click it and close the viewer.
