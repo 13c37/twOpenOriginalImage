@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.35
+// @version         0.1.36
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -269,20 +269,27 @@ switch ( LANGUAGE ) {
         OPTIONS.BUTTON_HELP_DO_NOTHING = 'Do nothing';
         OPTIONS.DOWNLOAD_HELPER_BUTTON_TEXT = 'Download';
         OPTIONS.HELP_KEYPRESS_DISPLAY_IMAGES = 'Display original images (' + SCRIPT_NAME + ')';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_NEXT = '[j]Next';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_PREVIOUS = '[k]Previous';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD = '[d]Download';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD_ZIP = '[z]ZIP';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE = '[s]Size: ';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FULL = 'Original';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WIDTH = 'Fit width';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_HEIGHT = 'Fit height';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WINDOW = 'Fit screen';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR = '[b]Background: ';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_BLACK = 'Dark';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_WHITE = 'Light';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_NEXT = '[j]next';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_PREVIOUS = '[k]previous';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD = '[d]download';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD_ZIP = '[z]zip';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE = '[s]size:';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FULL = 'full';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WIDTH = 'fit-width';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_HEIGHT = 'fit-height';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WINDOW = 'fit-window';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR = '[b]bgcolor:';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_BLACK = 'black';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_WHITE = 'white';
         break;
 }
+
+// all UI text in lower case (overlay bar, buttons, tooltips, download button)
+Object.keys( OPTIONS ).forEach( function ( key ) {
+    if ( ( typeof OPTIONS[ key ] == 'string' ) && /^(HELP_|BUTTON_HELP_|CLOSE_TEXT$|BUTTON_TEXT$|DOWNLOAD_HELPER_BUTTON_TEXT$|TWEET_LINK_TEXT$)/.test( key ) ) {
+        OPTIONS[ key ] = OPTIONS[ key ].toLowerCase();
+    }
+} );
 
 function to_array( array_like_object ) {
     return Array.prototype.slice.call( array_like_object );
@@ -560,20 +567,9 @@ function import_node( node, doc ) {
 
 
 function set_help_label( element, text ) {
-    // "[j]next" -> <kbd>j</kbd><span>next</span> (keeps the original strings / translations)
-    var doc = element.ownerDocument,
-        match = String( text ).match( /^\[([^\]]+)\]\s*(.*)$/ );
-    
+    // plain "[j]next" text, like the original overlay bar
     clear_node( element );
-    if ( ! match ) {
-        element.appendChild( doc.createTextNode( text ) );
-        return;
-    }
-    var key = doc.createElement( 'kbd' ),
-        label = doc.createElement( 'span' );
-    key.textContent = match[ 1 ];
-    label.textContent = match[ 2 ];
-    element.append( key, label );
+    element.appendChild( element.ownerDocument.createTextNode( text ) );
 } // end of set_help_label()
 
 
@@ -1993,7 +1989,7 @@ function initialize( user_options ) {
     var add_open_button = ( function () {
         var button_container_classname = SCRIPT_NAME + 'Button',
             opened_name_map = {},
-            top_offset = 52, // overlay header height
+            top_offset = 26, // overlay header height
             
             MouseClick = {
                 move_count : 0
@@ -2151,7 +2147,7 @@ function initialize( user_options ) {
                     button = d.createElement( 'button' ),
                     button_container_style = button_container_template.style,
                     button_style = button.style,
-                    alt_text = ( is_mac() ) ? '[option]' : '[Alt]',
+                    alt_text = ( is_mac() ) ? '[option]' : '[alt]',
                     button_title;
                 
                 var help_map = {
@@ -2164,9 +2160,9 @@ function initialize( user_options ) {
                 };
 
                 button_title = escape_html( 
-                    '[Click]: ' + help_map[ OPTIONS.DEFAULT_ACTION_ON_CLICK_EVENT ] + 
-                    ' / ' + alt_text + '+[Click]: ' + help_map[ OPTIONS.DEFAULT_ACTION_ON_ALT_CLICK_EVENT ] +
-                    ' / [Shift]+[Click]: ' + help_map[ OPTIONS.DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT ]
+                    '[click]: ' + help_map[ OPTIONS.DEFAULT_ACTION_ON_CLICK_EVENT ] + 
+                    ' / ' + alt_text + '+[click]: ' + help_map[ OPTIONS.DEFAULT_ACTION_ON_ALT_CLICK_EVENT ] +
+                    ' / [shift]+[click]: ' + help_map[ OPTIONS.DEFAULT_ACTION_ON_SHIFT_CLICK_EVENT ]
                 );
                 
                 button_container_template.setAttribute( 'data-original-title', button_title );
@@ -2677,7 +2673,12 @@ function initialize( user_options ) {
                             // TODO: Chrome でも IFRAME 経由の呼び出しが CSP にひっかかるようになってしまった(Chrome 65.0.3325.162)
                             // ※(srcを画像のURL(https://pbs.twimg.com/media/*)とした)IFRAME内で、a[download]にて Blob URL を指定してダウンロードしようとすると、CSPエラー発生
                             // →主要ブラウザでは XMLHttpRequest Level 2 対応しているため、直接呼び出し
-                            download_zip( tweet_info_json );
+                            // the viewer no longer pre-checks formats, so resolve them here (photos are cached by now)
+                            Promise.all( img_urls.map( img_url => find_valid_img_url( img_url ) ) ).then( valid_img_urls => {
+                                var tweet_info = JSON.parse( tweet_info_json );
+                                tweet_info.img_urls = valid_img_urls;
+                                download_zip( JSON.stringify( tweet_info ) );
+                            } );
                             
                             return;
                             
@@ -2828,6 +2829,20 @@ function initialize( user_options ) {
                         
                         image_overlay_loading.appendChild( loading );
                         
+                        // progress text under the spinner, so a 20-photo post visibly reacts at once
+                        var loading_text = d.createElement( 'div' ),
+                            loading_text_style = loading_text.style;
+                        loading_text.className = SCRIPT_NAME + '_loading_text';
+                        loading_text_style.position = 'absolute';
+                        loading_text_style.top = 'calc(50% + 32px)';
+                        loading_text_style.left = 0;
+                        loading_text_style.right = 0;
+                        loading_text_style.textAlign = 'center';
+                        loading_text_style.color = '#fff';
+                        loading_text_style.fontSize = '14px';
+                        loading_text_style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.8)';
+                        image_overlay_loading.appendChild( loading_text );
+                        
                         d.body.appendChild( image_overlay_loading );
                         
                         return image_overlay_loading;
@@ -2842,8 +2857,7 @@ function initialize( user_options ) {
                         image_overlay_close_link_style.cssFloat = 'right';
                         image_overlay_close_link_style.margin = '0 8px';
                         
-                        image_overlay_close_link.appendChild( d.createTextNode( '\u2715' ) );
-                        image_overlay_close_link.setAttribute( 'aria-label', OPTIONS.CLOSE_TEXT );
+                        image_overlay_close_link.appendChild( d.createTextNode( OPTIONS.CLOSE_TEXT ) );
                         
                         return image_overlay_close_link;
                     } )(),
@@ -2973,8 +2987,28 @@ function initialize( user_options ) {
                 start_index = Math.max( 0, img_urls.indexOf( start_img_url ) ),
                 loaded_flags = img_urls.map( () => false ),
                 ready_fired = false,
-                on_late_load = options.on_late_load;
-            
+                on_late_load = options.on_late_load,
+                on_progress = options.on_progress,
+                loaded_count = 0,
+                // Load the clicked photo alone first (it gets the full bandwidth), then the rest a few at a time.
+                // 20 parallel full-size downloads made every photo, including the clicked one, finish at about the same time.
+                MAX_PARALLEL_LOADS = 3,
+                loaders = [],
+                load_order = [],
+                active_loads = 0,
+                first_load_done = false,
+                pump_loads = function () {
+                    while ( first_load_done && ( active_loads < MAX_PARALLEL_LOADS ) && ( 0 < load_order.length ) ) {
+                        loaders[ load_order.shift() ]();
+                    }
+                },
+                release_first_load = function () {
+                    if ( ! first_load_done ) {
+                        first_load_done = true;
+                        pump_loads();
+                    }
+                };
+
             img_urls.forEach( function ( img_url, index ) {
                 var img = import_node( img_template, target_document ),
                     link = import_node( link_template, target_document ),
@@ -3068,7 +3102,32 @@ function initialize( user_options ) {
                         img.setAttribute( 'width', img.naturalWidth );
                         img.setAttribute( 'height', img.naturalHeight );
                     }
+                    if ( loaded_flags[ index ] ) {
+                        return;
+                    }
                     loaded_flags[ index ] = true;
+                    loaded_count ++;
+                    active_loads = Math.max( 0, active_loads - 1 );
+                    if ( index == start_index ) {
+                        release_first_load();
+                    }
+                    pump_loads();
+                    
+                    if ( img.naturalWidth && ( img.src != img_url ) ) {
+                        // a fallback format worked: keep downloads pointing at the file that exists
+                        var ext = get_img_extension( img.src ) || 'jpg';
+                        if ( download_link ) {
+                            download_link.href = img.src;
+                            img_filename = img_filename.replace( /\.[a-z0-9]+$/i, '.' + ext );
+                            download_link.download = img_filename;
+                        }
+                        if ( link.href == img_url ) {
+                            link.href = img.src;
+                        }
+                    }
+                    if ( typeof on_progress == 'function' ) {
+                        on_progress( loaded_count, img_urls.length );
+                    }
                     
                     if ( ready_fired ) {
                         // photo below the visible one finished later: re-apply the current fit mode
@@ -3087,16 +3146,30 @@ function initialize( user_options ) {
                 } // end of check_loaded_image()
                 
                 add_event( img, 'load', check_loaded_image );
+                var tried_formats = [];
                 add_event( img, 'error', function ( event ) {
-                    if ( /\.jpg/.test( img.src ) ) {
+                    // try the other formats only when needed (replaces the slow up-front check of every photo)
+                    var format_match = /format=([a-z0-9]+)/i.exec( img.src );
+                    if ( format_match ) {
+                        tried_formats.push( format_match[ 1 ].toLowerCase() );
+                        var next_format = [ 'jpg', 'png', 'gif', 'webp' ].find( format => ! tried_formats.includes( format ) );
+                        if ( next_format ) {
+                            img.src = img.src.replace( /format=[a-z0-9]+/i, 'format=' + next_format );
+                            return;
+                        }
+                    }
+                    else if ( /\.jpg/.test( img.src ) ) {
                         img.src = img.src.replace( /\.jpg/, '.png' );
                         return;
                     }
                     check_loaded_image( event );
                 });
                 
-                //img.src = link.href = img_url;
-                img.src = img_url;
+                loaders[ index ] = function () {
+                    active_loads ++;
+                    // format=webp has no name=orig, so start with jpg
+                    img.src = img_url.replace( 'format=webp', 'format=jpg' );
+                };
                 link.href = ( OPTIONS.SAME_FILENAME_AS_IN_ZIP && tweet_url ) ? ( tweet_url + '/photo/' + ( index + 1 ) ) : img_url;
                 
                 link.className = 'image-link';
@@ -3115,6 +3188,18 @@ function initialize( user_options ) {
                 img_link_container.setAttribute( 'data-image-total', img_urls.length );
                 parent.appendChild( img_link_container );
             } );
+            
+            // clicked photo first, then the ones above it (needed to show it in place), then the rest
+            for ( let ci = 0; ci < img_urls.length; ci ++ ) {
+                if ( ci != start_index ) {
+                    load_order.push( ci );
+                }
+            }
+            if ( loaders[ start_index ] ) {
+                loaders[ start_index ]();
+            }
+            // don't let one slow photo hold back the others for long
+            setTimeout( release_first_load, 1500 );
         } // end of add_images_to_page()
         
         
@@ -3180,43 +3265,36 @@ function initialize( user_options ) {
                 image_overlay_container_mouse_click = object_extender( MouseClick ),
                 
                 on_wheel = ( event ) => {
-                    var flag_to_ignore = false,
-                        target_container = ( image_overlay_container_style.overflow == 'hidden' ) ? image_overlay_image_container : image_overlay_container,
-                        scroll_height = target_container.scrollHeight,
-                        scroll_top = target_container.scrollTop,
-                        container_rect = target_container.getBoundingClientRect();
+                    // Keep the wheel inside the viewer: only let it through while the viewer itself can still scroll
+                    // that way. Uses clientHeight + 1px tolerance: at 125% zoom the old getBoundingClientRect() height
+                    // was fractional, the "at the bottom" check never matched, and scrolling down leaked to X.
+                    var container = image_overlay_container,
+                        delta_y = event.deltaY,
+                        can_scroll = ( getComputedStyle( container ).overflowY != 'hidden' ) && ( 1 < container.scrollHeight - container.clientHeight );
                     
-                    log_debug( '### on_wheel()', scroll_height, scroll_top, container_rect, event );
-                    
-                    if ( scroll_height <= container_rect.height ) {
-                        flag_to_ignore = true;
+                    if ( ( ! delta_y ) && ( event.deltaX ) && ( getComputedStyle( container ).overflowX != 'hidden' ) ) {
+                        return; // horizontal scrolling inside the viewer ("original" size)
                     }
-                    else {
-                        if ( event.deltaY < 0 ) {
-                            if ( scroll_top <= 0 ) {
-                                flag_to_ignore = true;
-                            }
+                    if ( can_scroll ) {
+                        if ( ( delta_y < 0 ) && ( 0 < container.scrollTop ) ) {
+                            return;
                         }
-                        else if ( 0 < event.deltaY ) {
-                            if ( scroll_height <= scroll_top + container_rect.height ) {
-                                flag_to_ignore = true;
-                            }
+                        if ( ( 0 < delta_y ) && ( container.scrollTop + container.clientHeight < container.scrollHeight - 1 ) ) {
+                            return;
                         }
                     }
-                    
-                    if ( ! flag_to_ignore ) {
-                        return;
-                    }
-                    
-                    log_debug( '*** on_wheel(): event ignored', event );
+                    event.preventDefault();
+                    event.stopPropagation();
+                },
+                on_header_wheel = ( event ) => {
+                    // the top bar never scrolls the page behind it
                     event.preventDefault();
                     event.stopPropagation();
                 };
             
             function add_events() {
-                if ( is_twitter() ) {
-                    image_overlay_container.addEventListener( 'wheel', on_wheel, { passive: false } );
-                }
+                image_overlay_container.addEventListener( 'wheel', on_wheel, { passive: false } );
+                image_overlay_header.addEventListener( 'wheel', on_header_wheel, { passive: false } );
                 event_list.forEach( function ( event_item ) {
                     add_event( event_item.element,  event_item.name, event_item.func, true );
                 } );
@@ -3239,9 +3317,8 @@ function initialize( user_options ) {
                     fire_event( image_link_container, 'remove-mouse-click-event' );
                 } );
                 
-                if ( is_twitter() ) {
-                    image_overlay_container.removeEventListener( 'wheel', on_wheel );
-                }
+                image_overlay_container.removeEventListener( 'wheel', on_wheel );
+                image_overlay_header.removeEventListener( 'wheel', on_header_wheel );
             } // end of remove_events()
             
             
@@ -3293,8 +3370,17 @@ function initialize( user_options ) {
             
             var late_fit_timer = null;
             
+            var loading_text = image_overlay_loading.querySelector( '.' + SCRIPT_NAME + '_loading_text' ),
+                set_loading_text = function ( loaded, total ) {
+                    if ( loading_text ) {
+                        loading_text.textContent = ( 1 < total ) ? ( 'loading\u2026 ' + loaded + ' / ' + total ) : 'loading\u2026';
+                    }
+                };
+            set_loading_text( 0, img_urls.length );
+            
             add_images_to_page( img_urls, tweet_url, image_overlay_image_container, {
                 start_img_url : start_img_url
+            ,   on_progress : set_loading_text
             ,   callback : function () {
                     if ( image_overlay_container.style.display == 'none' ) {
                         return;
@@ -4355,16 +4441,10 @@ function initialize( user_options ) {
                 
                 if ( action == 'display_all' ) {
                     ( async () => {
-                        if ( focused_img_url ) {
-                            focused_img_url = await find_valid_img_url( focused_img_url );
-                        }
-                        for ( let ci = 0; ci < target_img_urls.length; ci ++ ) {
-                            target_img_urls[ ci ] = await find_valid_img_url( target_img_urls[ ci ] );
-                        }
-                        for ( let ci = 0; ci < target_all_img_urls.length; ci ++ ) {
-                            target_all_img_urls[ ci ] = await find_valid_img_url( target_all_img_urls[ ci ] );
-                        }
-                        
+                        // Open the viewer right away. (Before, every photo was downloaded one by one here just to
+                        // check its format, so a 20-photo post showed nothing until all 20 were loaded.)
+                        // The viewer now falls back to another format per photo only if one fails to load.
+
                         var tweet_link,
                             tweet_url,
                             tweet_text,
@@ -5243,24 +5323,16 @@ function initialize( user_options ) {
             }
         }
         
-        // Image viewer (overlay): X look, follows X's dark / light mode
+        // Image viewer (overlay): the original compact bar, lower case, follows X's dark / light mode
         var header_selector = '#' + SCRIPT_NAME + '_image_overlay_header',
             night_header = header_selector + '[data-nightmode="true"]';
-        css_rule_lines.push( header_selector + '{box-sizing:border-box; height:52px; margin:0 !important; padding:0 12px !important; background:rgba(255, 255, 255, 0.96) !important; color:#0f1419 !important; border-bottom:1px solid rgb(239, 243, 244) !important; font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important; font-size:15px !important; font-weight:400 !important; line-height:normal !important; -webkit-font-smoothing:antialiased;}' );
-        css_rule_lines.push( night_header + '{background:rgba(0, 0, 0, 0.92) !important; color:#e7e9ea !important; border-bottom-color:rgb(47, 51, 54) !important;}' );
-        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_shortcut_help_overlay{display:flex; flex-wrap:nowrap; gap:6px; height:52px; align-items:center; margin:0 !important; overflow:hidden; max-width:calc(50% - 60px);}' );
-        css_rule_lines.push( header_selector + ' .help-item{display:inline-flex; align-items:center; gap:6px; height:30px; margin:0 !important; padding:0 12px 0 6px; border-radius:9999px; background:rgba(15, 20, 25, 0.06); font-size:13px !important; white-space:nowrap; cursor:pointer; user-select:none; transition:background-color .15s;}' );
-        css_rule_lines.push( header_selector + ' .help-item:hover{background:rgba(29, 155, 240, 0.12);}' );
-        css_rule_lines.push( night_header + ' .help-item{background:rgba(231, 233, 234, 0.08);}' );
-        css_rule_lines.push( night_header + ' .help-item:hover{background:rgba(29, 155, 240, 0.2);}' );
-        css_rule_lines.push( header_selector + ' .help-item kbd{display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box; border-radius:5px; background:rgba(15, 20, 25, 0.1); font:700 11px/1 inherit; text-transform:uppercase;}' );
-        css_rule_lines.push( night_header + ' .help-item kbd{background:rgba(231, 233, 234, 0.16);}' );
-        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_status_overlay{top:0 !important; left:50% !important; width:auto !important; padding:0 !important; transform:translateX(-50%); line-height:52px; font-size:15px; font-weight:700; text-align:center !important;}' );
-        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_close_overlay{display:grid !important; place-items:center; width:36px; height:36px; margin:8px 0 0 !important; border-radius:9999px; color:inherit !important; font-size:18px; text-decoration:none; transition:background-color .15s;}' );
-        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_close_overlay:hover{background:rgba(15, 20, 25, 0.1);}' );
-        css_rule_lines.push( night_header + ' .' + SCRIPT_NAME + '_close_overlay:hover{background:rgba(231, 233, 234, 0.1);}' );
-        css_rule_lines.push( '#' + SCRIPT_NAME + '_image_overlay_container .image-link-container{padding-bottom:8px !important;}' );
-        css_rule_lines.push( '@media (max-width: 760px){' + header_selector + ' .help-item span{display:none;} ' + header_selector + ' .help-item{padding:0 6px;}}' );
+        css_rule_lines.push( header_selector + '{box-sizing:border-box; height:26px; margin:0 !important; padding:6px 0 2px !important; background:#fff !important; color:#000 !important; border-bottom:1px solid silver !important; text-transform:lowercase; overflow:hidden; white-space:nowrap; overscroll-behavior:contain;}' );
+        css_rule_lines.push( night_header + '{background:#1b2836 !important; color:#fff !important; border-bottom-color:#141d26 !important;}' );
+        css_rule_lines.push( header_selector + ' .help-item{user-select:none;}' );
+        css_rule_lines.push( header_selector + ' .help-item:hover, ' + header_selector + ' .' + SCRIPT_NAME + '_close_overlay:hover{color:rgb(29, 155, 240) !important;}' );
+        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_close_overlay{color:inherit !important; text-decoration:none !important;}' );
+        css_rule_lines.push( '#' + SCRIPT_NAME + '_image_overlay_container{overscroll-behavior:contain;}' );
+        css_rule_lines.push( '#' + SCRIPT_NAME + '_image_overlay_loading{text-transform:lowercase;}' );
         
         to_array( d.querySelectorAll( 'style.' + SCRIPT_NAME + '-css-rule' ) ).forEach( function ( old_style_css_rull ) {
             old_style_css_rull.parentNode.removeChild( old_style_css_rull );
@@ -5520,6 +5592,13 @@ async function init_gm_menu() {
         "NOT_SAVED": "Unsaved changes",
     } );
     
+    // all settings text in lower case
+    Object.keys( messages ).forEach( key => {
+        if ( typeof messages[ key ] == 'string' ) {
+            messages[ key ] = messages[ key ].toLowerCase();
+        }
+    } );
+    
     let resolveInit;
 
     const initPromise = new Promise(resolve => {
@@ -5717,7 +5796,7 @@ async function init_gm_menu() {
                     make( 'span', { className : 'tooi-credits-name', textContent : 'furyu' } ),
                     make( 'span', { className : 'tooi-credits-links' },
                         make_link( messages.AUTHOR_SITE, 'https://memo.furyutei.com/' ),
-                        make_link( 'GitHub', 'https://github.com/furyutei' ),
+                        make_link( 'github', 'https://github.com/furyutei' ),
                         make_link( `\u2665 ${messages.DONATE_AUTHOR}`, 'https://memo.furyutei.com/about#send_donation', { className : 'tooi-donate', id : `${config_id}_header-donation-link` } )
                     ),
                     make( 'span', { className : 'tooi-credits-maintainer' },

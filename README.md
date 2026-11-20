@@ -33,6 +33,12 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Changelog
 
+### 0.1.36 — instant viewer, old look back
+- **Opens instantly on 20-photo posts.** Before, every photo was downloaded one after another just to check its file format, and only then did the viewer open (≈8 s of nothing in a test with 20 photos). Now the viewer opens at once with a spinner and "loading… 3 / 20"; the clicked photo downloads first on its own, the rest 3 at a time. Format fallback (jpg → png → gif) now happens per photo, only if one fails; downloads and ZIP still get the right file.
+- **Old compact viewer bar is back** (`[j]next [k]previous … close [esc]`), dark/light following X.
+- **All text in lower case**: viewer bar, settings window, button tooltips, download button.
+- **Scrolling no longer leaks to X**: the wheel on the viewer's top bar did scroll the page behind it, and below the last photo (or on single-photo posts) scrolling down kept scrolling X. Cause: at 125% zoom a fractional height made the "already at the bottom" check fail.
+
 ### 0.1.35 — settings window fix
 - With "See-through panel" on, settings scrolled under the title bar and the credits slid under Reset/Save/Close, so text overlapped. Now only the settings list scrolls; the title bar, credits and buttons stay fixed and nothing passes beneath them.
 - The scrollbar sits only beside the settings list (thin, X colours) instead of running the full height of the window and into the rounded corners.
