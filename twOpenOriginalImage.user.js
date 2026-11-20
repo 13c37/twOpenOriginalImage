@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.36
+// @version         0.1.37
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -218,7 +218,8 @@ var DEBUG = false,
         return lang;
     } )(),
     
-    FONT_FAMILY = 'Arial, "ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", Osaka, メイリオ, Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", sans-serif',
+    // X's own font (Chirp) everywhere, same stack as the settings window and post button; system UI font where Chirp isn't loaded
+    FONT_FAMILY = 'TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif',
     
     LOADING_SVG = `
         <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -2347,6 +2348,7 @@ function initialize( user_options ) {
                         image_overlay_container_style.zIndex = 10000;
                         image_overlay_container_style.padding = top_offset + 'px 0 0 0';
                         image_overlay_container_style.background = 'rgba( 0, 0, 0, 0.8 )';
+                        image_overlay_container_style.fontFamily = FONT_FAMILY; // download buttons on the photos
                         
                         image_overlay_container.appendChild( image_overlay_image_container );
                         
@@ -2814,6 +2816,7 @@ function initialize( user_options ) {
                         image_overlay_loading_style.left = 0;
                         image_overlay_loading_style.zIndex = 10010;
                         image_overlay_loading_style.background = 'transparent';
+                        image_overlay_loading_style.fontFamily = FONT_FAMILY;
                         
                         loading.appendChild( d.importNode( new DOMParser().parseFromString( LOADING_SVG, 'application/xml' ).documentElement, true ) );
                         loading_style.width = '40px';
@@ -5905,6 +5908,8 @@ async function init_gm_menu() {
                 save_button.textContent = messages.SAVE;
                 close_button.textContent = messages.CLOSE;
                 reset_link.textContent = messages.SET_DEFAULT;
+                // GM_config's own hover tooltips: lower case like the rest
+                [ save_button, close_button, reset_link ].forEach( element => element.title && ( element.title = element.title.toLowerCase() ) );
                 
                 [ ... frame_doc.querySelectorAll( '.section_header' ) ].map( section_header => section_header.classList.remove( 'center' ) );
                 
