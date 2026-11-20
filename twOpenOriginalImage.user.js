@@ -4,14 +4,13 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.30
+// @version         0.1.31
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
 // @include         https://mobile.twitter.com/*
 // @include         https://mobile.x.com/*
 // @include         https://pbs.twimg.com/media/*
-// @include         https://tweetdeck.twitter.com/*
 // @grant           GM.getValue
 // @grant           GM.setValue
 // @grant           GM.registerMenuCommand

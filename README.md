@@ -29,6 +29,9 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Changelog
 
+### 0.1.31
+- Removed the dead `tweetdeck.twitter.com` match (TweetDeck no longer exists).
+
 ### 0.1.30
 - Post button is **off by default** (just click a photo — it opens the original). Turn it on under *Post button*.
 - Label is **empty by default** = icon only, sized like X's own icons. Type a label (placeholder: "e.g. Original") to show text next to the icon.
