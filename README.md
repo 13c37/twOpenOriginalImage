@@ -71,7 +71,7 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Credits
 
-- **[furyu](https://github.com/furyutei)** — original author (2016–). Original repo: [furyutei/twOpenOriginalImage](https://github.com/furyutei/twOpenOriginalImage). Donations: <https://memo.furyutei.com/about#send_donation>
+- **[furyu](https://github.com/furyutei)** — original author (2016–). Donations: <https://memo.furyutei.com/about#send_donation>
 - **Coxxs** — maintained 0.1.17–0.1.22
 - **13c37** — current maintainer (0.1.23+)
 
