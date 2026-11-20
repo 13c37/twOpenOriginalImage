@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.34
+// @version         0.1.35
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -5789,10 +5789,12 @@ async function init_gm_menu() {
                 var wrapper = frame_doc.querySelector( `#${config_id}_wrapper` ),
                     sections = [ ... wrapper.querySelectorAll( ':scope > .section_header_holder' ) ],
                     grid = make( 'div', { className : 'tooi-grid' } ),
+                    scroll_area = make( 'div', { className : 'tooi-scroll' }, grid ),
                     left_column = make( 'div', { className : 'tooi-col' } ),
                     right_column = make( 'div', { className : 'tooi-col' } );
                 if ( 0 < sections.length ) {
-                    sections[ 0 ].before( grid );
+                    // Only this area scrolls; header, credits and buttons stay outside it
+                    sections[ 0 ].before( scroll_area );
                     sections.forEach( ( section, index ) => ( index < 3 ? left_column : right_column ).appendChild( section ) );
                     grid.append( left_column, right_column );
                 }
@@ -5961,9 +5963,9 @@ async function init_gm_menu() {
                 color-scheme: dark;
                 width: min(1000px, 100%);
                 max-height: calc(100vh - 32px);
-                overflow: auto;
-                overscroll-behavior: contain;
-                scrollbar-width: thin;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
                 padding: 0 20px;
                 border-radius: 16px;
                 background: var(--panel);
@@ -5977,9 +5979,7 @@ async function init_gm_menu() {
 
             /* header */
             #${config_id} .config_header {
-                position: sticky;
-                top: 0;
-                z-index: 2;
+                flex: none;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -6046,6 +6046,19 @@ async function init_gm_menu() {
 
             #${config_id} .tooi-icon-button:hover {
                 background: var(--row-hover);
+            }
+
+            /* the only scrolling part: header, credits and buttons never overlap it */
+            #${config_id} .tooi-scroll {
+                flex: 1 1 auto;
+                min-height: 0;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                scrollbar-width: thin;
+                scrollbar-color: var(--switch-off) transparent;
+                scrollbar-gutter: stable;
+                margin: 0 -20px;
+                padding: 0 8px 0 20px;
             }
 
             /* landscape: two columns of sections */
@@ -6185,6 +6198,7 @@ async function init_gm_menu() {
 
             /* credits (bottom) */
             #${config_id} .tooi-credits {
+                flex: none;
                 display: flex;
                 flex-wrap: wrap;
                 align-items: baseline;
@@ -6232,9 +6246,7 @@ async function init_gm_menu() {
 
             /* footer */
             #${config_id}_buttons_holder {
-                position: sticky;
-                bottom: 0;
-                z-index: 2;
+                flex: none;
                 display: flex;
                 align-items: center;
                 justify-content: flex-end;
@@ -6300,12 +6312,11 @@ async function init_gm_menu() {
             }
 
             /* translucent panel (no blur) */
-            body#${config_id}.tooi-translucent #${config_id}_wrapper,
-            body#${config_id}.tooi-translucent .config_header,
-            body#${config_id}.tooi-translucent #${config_id}_buttons_holder {
+            body#${config_id}.tooi-translucent #${config_id}_wrapper {
                 background: color-mix(in srgb, var(--panel) 88%, transparent);
             }
             
+            /* nothing scrolls under these any more, so they share the panel's see-through background */
             body#${config_id}.tooi-translucent .config_header,
             body#${config_id}.tooi-translucent #${config_id}_buttons_holder {
                 background: transparent;

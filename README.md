@@ -33,6 +33,10 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Changelog
 
+### 0.1.35 — settings window fix
+- With "See-through panel" on, settings scrolled under the title bar and the credits slid under Reset/Save/Close, so text overlapped. Now only the settings list scrolls; the title bar, credits and buttons stay fixed and nothing passes beneath them.
+- The scrollbar sits only beside the settings list (thin, X colours) instead of running the full height of the window and into the rounded corners.
+
 ### 0.1.34 — image viewer
 - **Opens faster**: the viewer appears as soon as the photo you clicked (and the ones above it) has loaded, instead of waiting for all photos. On 20-photo posts with full-size originals this is the biggest win. Photos further down still fit the screen when they arrive.
 - **New header in X's style**: follows X dark/light mode, X font, keys shown as small labels (J Next, K Previous, D Download, S Size, B Background), round ✕ close. Labels collapse to keys on narrow windows.
