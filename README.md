@@ -1,5 +1,9 @@
 # twOpenOriginalImage
 
+[![Greasy Fork version](https://img.shields.io/greasyfork/v/606352?label=Greasy%20Fork)](https://greasyfork.org/en/scripts/606352-twopenoriginalimage)
+[![Greasy Fork installs](https://img.shields.io/greasyfork/dt/606352?label=installs)](https://greasyfork.org/en/scripts/606352-twopenoriginalimage)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Open and save images from X (Twitter) in original size (`name=orig`). Works on posts with up to 20 photos.
 
 **Actively maintained.** Continuation of furyu's *Twitter 原寸びゅー* (twOpenOriginalImage), which was discontinued at 0.1.16.
@@ -7,7 +11,7 @@ Open and save images from X (Twitter) in original size (`name=orig`). Works on p
 ## Install
 
 1. Install a userscript manager: [Violentmonkey](https://violentmonkey.github.io/), [Tampermonkey](https://www.tampermonkey.net/) or [ScriptCat](https://docs.scriptcat.org/en/).
-2. Install the script: [twOpenOriginalImage.user.js](https://github.com/13c37/twOpenOriginalImage/raw/main/twOpenOriginalImage.user.js)
+2. Install the script from **[Greasy Fork](https://greasyfork.org/en/scripts/606352-twopenoriginalimage)** or directly from GitHub: [twOpenOriginalImage.user.js](https://github.com/13c37/twOpenOriginalImage/raw/main/twOpenOriginalImage.user.js)
 
 Updates arrive automatically through your userscript manager.
 
@@ -28,6 +32,9 @@ Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) 
 Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the post URL and your browser + userscript manager.
 
 ## Changelog
+
+### 0.1.33
+- Removed `@contributionURL`: Greasy Fork showed it as "Thank 13c37 by making a donation" while it pointed to furyu. furyu's donation link stays in Credits and in the settings window.
 
 ### 0.1.32
 - `@include` → `@match` (exact sites, https only; plain http redirects to https anyway).

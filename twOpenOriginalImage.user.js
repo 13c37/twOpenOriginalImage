@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.32
+// @version         0.1.33
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -25,7 +25,6 @@
 // @description:ja  Web版Twitter・TweetDeckで、原寸画像の表示と保存が簡単にできるようになります。
 // @homepageURL     https://github.com/13c37/twOpenOriginalImage
 // @supportURL      https://github.com/13c37/twOpenOriginalImage/issues
-// @contributionURL https://memo.furyutei.com/about#send_donation
 // @compatible      chrome+tampermonkey
 // @compatible      firefox+violentmonkey
 // @downloadURL     https://github.com/13c37/twOpenOriginalImage/raw/main/twOpenOriginalImage.user.js
