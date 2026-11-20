@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.28
+// @version         0.1.29
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
@@ -133,7 +133,7 @@ var OPTIONS = {
 ,   ENABLED_ON_TWEETDECK : true // true: TweetDeck 上で有効
 ,   DISPLAY_OVERLAY : true // true: 全ての画像を同一ページで開く際に(別タブで開かず)タイムライン上にオーバーレイする
 ,   OVERRIDE_CLICK_EVENT : true // true: ツイート中の画像クリックで原寸画像を開く
-,   DISPLAY_ORIGINAL_BUTTONS : true // true: [原寸画像]ボタンを表示
+,   DISPLAY_ORIGINAL_BUTTONS : false // true: [原寸画像]ボタンを表示 (default off: click the photo instead)
 ,   OVERRIDE_GALLERY_FOR_TWEETDECK : true // true: TweetDeck のギャラリー(画像サムネイルクリック時のポップアップ)を置換(OVERRIDE_CLICK_EVENT true 時のみ有効)
 ,   DOWNLOAD_HELPER_SCRIPT_IS_VALID : true // true: ダウンロードヘルパー機能有効
 ,   DOWNLOAD_ZIP_IS_VALID : true // true: ZIPダウンロード有効
@@ -2291,7 +2291,7 @@ function initialize( user_options ) {
                     var ns = 'http://www.w3.org/2000/svg',
                         icon = d.createElementNS( ns, 'svg' ),
                         icon_path = d.createElementNS( ns, 'path' ),
-                        label_text = String( OPTIONS.BUTTON_TEXT || '' ).trim();
+                        label_text = ''; // icon only
                     
                     icon.setAttribute( 'viewBox', '0 0 24 24' );
                     icon.setAttribute( 'aria-hidden', 'true' );
@@ -2299,7 +2299,7 @@ function initialize( user_options ) {
                     icon_path.setAttribute( 'd', 'M3 3h7v2H6.41l4.3 4.29-1.42 1.42L5 6.41V10H3V3zm18 0v7h-2V6.41l-4.29 4.3-1.42-1.42L17.59 5H14V3h7zM3 21v-7h2v3.59l4.29-4.3 1.42 1.42L6.41 19H10v2H3zm18 0h-7v-2h3.59l-4.3-4.29 1.42-1.42L19 17.59V14h2v7z' );
                     icon.appendChild( icon_path );
                     button.appendChild( icon );
-                    button.setAttribute( 'aria-label', label_text || 'Original' );
+                    button.setAttribute( 'aria-label', OPTIONS.BUTTON_TEXT || 'Original' );
                     
                     if ( label_text ) {
                         var label = d.createElement( 'span' );
@@ -5416,7 +5416,7 @@ function initialize( user_options ) {
             if ( is_react_twitter() ) {
                 // Match X's own action bar (font, colour, hover circle)
                 css_rule_lines.push( '.' + SCRIPT_NAME + 'Button{display:flex; align-items:center; float:none !important;}' );
-                css_rule_lines.push( button_selector + '{display:inline-flex; align-items:center; gap:4px; height:34px; min-height:34px; margin:0 !important; padding:0 8px; border:0; border-radius:9999px; background:transparent; color:rgb(83, 100, 113); font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:13px; font-weight:400; line-height:16px; white-space:nowrap; cursor:pointer; transition:color .2s, background-color .2s; -webkit-font-smoothing:antialiased;}' );
+                css_rule_lines.push( button_selector + '{display:inline-flex; align-items:center; justify-content:center; gap:4px; width:34px; height:34px; min-height:34px; margin:0 !important; padding:0; border:0; border-radius:9999px; background:transparent; color:rgb(83, 100, 113); font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:13px; font-weight:400; line-height:16px; white-space:nowrap; cursor:pointer; transition:color .2s, background-color .2s; -webkit-font-smoothing:antialiased;}' );
                 css_rule_lines.push( button_selector + ' .' + SCRIPT_NAME + '-icon{width:18.75px; height:18.75px; flex:none; fill:currentColor;}' );
                 css_rule_lines.push( button_selector + ':hover{color:rgb(29, 155, 240); background-color:rgba(29, 155, 240, 0.1);}' );
                 css_rule_lines.push( button_selector + ':focus{outline:none;}' );
@@ -5658,7 +5658,7 @@ async function init_gm_menu() {
         "DISPLAY_OVERLAY": "オーバーレイで開く（同じタブ）",
         "OVERRIDE_CLICK_EVENT": "画像クリックで原寸画像を開く",
         "SWAP_IMAGE_URL": "タイムラインの画像を原寸で読み込む（通信量増）",
-        "DISPLAY_ORIGINAL_BUTTONS": "ツイートにボタンを表示",
+        "DISPLAY_ORIGINAL_BUTTONS": "ツイートにアイコンボタンを表示",
         "BUTTON_TEXT_HEADER": "ラベル（空欄でアイコンのみ）",
         "DOWNLOAD_HELPER_IS_VALID_HEADER": "画像ページにダウンロードボタン",
         "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "オーバーレイ時にダウンロードボタンを自動で隠す",
@@ -5678,7 +5678,7 @@ async function init_gm_menu() {
         "DISPLAY_OVERLAY": "Open in overlay (same tab)",
         "OVERRIDE_CLICK_EVENT": "Clicking a photo opens the original",
         "SWAP_IMAGE_URL": "Load timeline photos in original size (more data)",
-        "DISPLAY_ORIGINAL_BUTTONS": "Show button on posts",
+        "DISPLAY_ORIGINAL_BUTTONS": "Show icon button on posts",
         "BUTTON_TEXT_HEADER": "Label (empty = icon only)",
         "DOWNLOAD_HELPER_IS_VALID_HEADER": "Download button on image pages",
         "HIDE_DOWNLOAD_BUTTON_AUTOMATICALLY": "Auto-hide download button in overlay",
@@ -5721,11 +5721,6 @@ async function init_gm_menu() {
                 type : 'checkbox',
                 default : OPTIONS.DISPLAY_ORIGINAL_BUTTONS,
                 section : messages.SEC_BUTTON,
-            },
-            BUTTON_TEXT : {
-                label : messages.BUTTON_TEXT_HEADER,
-                type : 'text',
-                default : OPTIONS.BUTTON_TEXT,
             },
             DISPLAY_OVERLAY : {
                 label : messages.DISPLAY_OVERLAY,
@@ -5905,7 +5900,7 @@ async function init_gm_menu() {
                 var buttons_field = GM_config.fields[ 'DISPLAY_ORIGINAL_BUTTONS' ],
                     text_field = GM_config.fields[ 'BUTTON_TEXT' ],
                     sync_button_text = () => {
-                        if ( buttons_field.node && text_field.node ) {
+                        if ( buttons_field.node && text_field && text_field.node ) {
                             text_field.node.disabled = ! buttons_field.node.checked;
                             text_field.wrapper.classList.toggle( 'tooi-dim', ! buttons_field.node.checked );
                         }

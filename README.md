@@ -13,7 +13,7 @@ Updates arrive automatically through your userscript manager.
 
 ## Usage
 
-Use the **Original** button in the action bar of any post with photos:
+Click any photo in a post (or enable the icon button under *Post button* in Settings):
 
 | Action | Default |
 |---|---|
@@ -28,6 +28,10 @@ Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) 
 Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the post URL and your browser + userscript manager.
 
 ## Changelog
+
+### 0.1.29
+- Post button is now **off by default** (just click a photo — it opens the original). Turn it on under *Post button*.
+- When on, it's an icon only (no "Original" text), sized like X's own action icons. Label setting removed.
 
 ### 0.1.28
 - Post button no longer stays highlighted after you click it and close the viewer.
