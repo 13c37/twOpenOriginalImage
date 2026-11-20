@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{background:#000;color:#e7e9ea;font:15px Arial;margin:0}article{border:1px solid #333;margin:10px auto;width:600px;padding:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:2px}.grid div{height:150px;overflow:hidden}.grid img{width:100%}p{margin:0 0 30px}</style>
+<script>
+window.GM_info={script:{version:'TEST',homepage:''}};window.__menu=[];
+const Q=new URLSearchParams(location.search);window.__xhr=[];if(Q.get('iframeopen')){window.open=function(u,n){const f=document.createElement('iframe');f.name=n;f.id='__tab';f.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:99999;background:#fff';document.documentElement.appendChild(f);f.contentWindow.close=function(){f.remove()};return f.contentWindow;};}window.__zip=[];
+window.GM={getValue:async(k,d)=>(Q.get('cfg')&&/Config$/.test(k))?Q.get('cfg'):d,setValue:async()=>{},registerMenuCommand:(n,f)=>__menu.push({n,f})};
+window.GM_getValue=()=>undefined;window.GM_setValue=()=>{};window.GM_xmlhttpRequest=(o)=>{__xhr.push(o.url)};window.GM_download=()=>{};window.JSZip=function(){this.file=(n)=>{__zip.push(n);return this};this.folder=()=>this;this.generateAsync=()=>new Promise(()=>{});};window.saveAs=()=>{};
+</script><script src="https://local.test/gm_config.js"></script></head><body><script>if(Q.get("light")){document.write("<style>body{background:#fff!important;color:#000}</style>")}</script>
+<div id="react-root"><div data-testid="primaryColumn">
+<script>
+function post(id,n){let h=`<article role="article" data-testid="tweet" id="${id}"><div lang="en" dir="auto">post ${id}</div><a role="link" href="/u/status/${id}"><time datetime="2026-11-20T10:00:00Z">now</time></a><div class="grid">`;
+for(let i=1;i<=Math.min(n,4);i++)h+=`<a role="link" href="/u/status/${id}/photo/${i}"><div aria-label="Image"><img src="https://pbs.twimg.com/media/${id}_${i}?format=jpg&name=small"></div></a>`;
+return h+'</div><div role="group"><div data-testid="reply">reply</div><div data-testid="like">like</div></div></article>';}
+let out='';for(let k=0;k<5;k++)out+='<p>filler '+k+'</p>';out+=post('111',20);out+=post('222',1);for(let k=0;k<40;k++)out+='<p>filler post text '+k+'</p>';document.write(out);
+function fiber(id,n){const el=document.getElementById(id);el['__reactFiber$test']={memoizedProps:{tweet:{legacy:{extended_entities:{media:Array.from({length:n},(_,i)=>({type:'photo',media_url_https:`https://pbs.twimg.com/media/${id}_${i+1}.jpg`}))}}}}};}
+fiber('111',20);fiber('222',1);
+</script>
+</div></div>
+<script src="https://local.test/script.user.js"></script>
+</body></html>
