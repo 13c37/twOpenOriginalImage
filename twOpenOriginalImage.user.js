@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.27
+// @version         0.1.28
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
@@ -4302,6 +4302,9 @@ function initialize( user_options ) {
             
             add_event( button, 'click', function ( event ) {
                 event.stopPropagation();
+                if ( event.detail ) {
+                    button.blur(); // mouse click: don't keep the hover/focus highlight after the viewer closes
+                }
                 
                 const
                     button_loading_container_style = button.querySelector( '.loading' ).style,
@@ -5415,9 +5418,11 @@ function initialize( user_options ) {
                 css_rule_lines.push( '.' + SCRIPT_NAME + 'Button{display:flex; align-items:center; float:none !important;}' );
                 css_rule_lines.push( button_selector + '{display:inline-flex; align-items:center; gap:4px; height:34px; min-height:34px; margin:0 !important; padding:0 8px; border:0; border-radius:9999px; background:transparent; color:rgb(83, 100, 113); font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:13px; font-weight:400; line-height:16px; white-space:nowrap; cursor:pointer; transition:color .2s, background-color .2s; -webkit-font-smoothing:antialiased;}' );
                 css_rule_lines.push( button_selector + ' .' + SCRIPT_NAME + '-icon{width:18.75px; height:18.75px; flex:none; fill:currentColor;}' );
-                css_rule_lines.push( button_selector + ':hover, ' + button_selector + ':focus-visible{color:rgb(29, 155, 240); background-color:rgba(29, 155, 240, 0.1); outline:none;}' );
+                css_rule_lines.push( button_selector + ':hover{color:rgb(29, 155, 240); background-color:rgba(29, 155, 240, 0.1);}' );
+                css_rule_lines.push( button_selector + ':focus{outline:none;}' );
+                css_rule_lines.push( button_selector + ':focus-visible{outline:2px solid rgba(29, 155, 240, 0.6); outline-offset:-2px;}' );
                 css_rule_lines.push( 'body[data-nightmode="true"] ' + button_selector + '{color:rgb(113, 118, 123);}' );
-                css_rule_lines.push( 'body[data-nightmode="true"] ' + button_selector + ':hover, body[data-nightmode="true"] ' + button_selector + ':focus-visible{color:rgb(29, 155, 240);}' );
+                css_rule_lines.push( 'body[data-nightmode="true"] ' + button_selector + ':hover{color:rgb(29, 155, 240);}' );
             }
             else if ( is_react_page() ) {
                 css_rule_lines.push( button_selector + '{background-image: linear-gradient(rgb(255, 255, 255), rgb(245, 248, 250)); background-color: rgb(245, 248, 250); color: rgb(102, 117, 127); cursor: pointer; display: inline-block; position: relative; border-width: 1px; border-style: solid; border-color: rgb(230, 236, 240); border-radius: 4px;}' );
@@ -5569,6 +5574,7 @@ async function init_gm_menu() {
                 "NOT_SAVED": "未保存",
                 "APPEARANCE": "外観",
                 "UI_THEME": "テーマ",
+                "UI_TRANSLUCENT": "パネルを少し透過",
                 "THEME_AUTO": "自動（システム）",
                 "THEME_DARK": "ダーク",
                 "THEME_LIGHT": "ライト",
@@ -5627,6 +5633,7 @@ async function init_gm_menu() {
                 "NOT_SAVED": "Not saved",
                 "APPEARANCE": "Appearance",
                 "UI_THEME": "Theme",
+                "UI_TRANSLUCENT": "See-through panel",
                 "THEME_AUTO": "Auto (system)",
                 "THEME_DARK": "Dark",
                 "THEME_LIGHT": "Light",
@@ -5703,6 +5710,11 @@ async function init_gm_menu() {
                 type : 'select',
                 options : [ 'auto', 'dark', 'light' ],
                 default : 'auto',
+            },
+            UI_TRANSLUCENT : {
+                label : messages.UI_TRANSLUCENT,
+                type : 'checkbox',
+                default : true,
             },
             DISPLAY_ORIGINAL_BUTTONS : {
                 label : messages.DISPLAY_ORIGINAL_BUTTONS,
@@ -5818,6 +5830,7 @@ async function init_gm_menu() {
                     x_button = make( 'button', { type : 'button', className : 'tooi-icon-button', textContent : '\u2715', title : messages.CLOSE } ),
                     body = frame_doc.body,
                     theme_field = GM_config.fields[ 'UI_THEME' ],
+                    translucent_field = GM_config.fields[ 'UI_TRANSLUCENT' ],
                     theme_labels = { auto : messages.THEME_AUTO, dark : messages.THEME_DARK, light : messages.THEME_LIGHT },
                     svg_icon = ( paths ) => {
                         var ns = 'http://www.w3.org/2000/svg',
@@ -5844,6 +5857,7 @@ async function init_gm_menu() {
                             dark = ( theme == 'dark' ) || ( ( theme == 'auto' ) && dark_query.matches );
                         
                         body.dataset.theme = dark ? 'dark' : 'light';
+                        body.classList.toggle( 'tooi-translucent', translucent_field.node ? translucent_field.node.checked : !! GM_config.get( 'UI_TRANSLUCENT' ) );
                         frame.style.backgroundColor = dark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(15, 20, 30, 0.35)';
                         theme_button.replaceChildren( ( theme_icons[ theme ] || theme_icons.auto )() );
                         theme_button.title = `${messages.UI_THEME}: ${theme_labels[ theme ] || theme}`;
@@ -5885,6 +5899,7 @@ async function init_gm_menu() {
                 if ( theme_field.node ) {
                     [ ... theme_field.node.options ].forEach( opt => opt.textContent = theme_labels[ opt.value ] || opt.value );
                     theme_field.node.addEventListener( 'change', apply_ui );
+                    translucent_field.node && translucent_field.node.addEventListener( 'change', apply_ui );
                 }
                 // Button label only matters when buttons are shown
                 var buttons_field = GM_config.fields[ 'DISPLAY_ORIGINAL_BUTTONS' ],
@@ -5911,6 +5926,7 @@ async function init_gm_menu() {
                     operation_field.node.addEventListener( 'change', sync_enabled );
                     operation_field.wrapper.classList.add( 'tooi-master' );
                     theme_field.wrapper && theme_field.wrapper.classList.add( 'tooi-master' );
+                    translucent_field.wrapper && translucent_field.wrapper.classList.add( 'tooi-master' );
                 }
                 sync_enabled();
                 
@@ -6447,6 +6463,18 @@ async function init_gm_menu() {
                 color: var(--danger);
             }
 
+            /* translucent panel (no blur) */
+            body#${config_id}.tooi-translucent #${config_id}_wrapper,
+            body#${config_id}.tooi-translucent .config_header,
+            body#${config_id}.tooi-translucent #${config_id}_buttons_holder {
+                background: color-mix(in srgb, var(--panel) 88%, transparent);
+            }
+            
+            body#${config_id}.tooi-translucent .config_header,
+            body#${config_id}.tooi-translucent #${config_id}_buttons_holder {
+                background: transparent;
+            }
+            
             /* script disabled: grey out everything except the General switches */
             body#${config_id}.tooi-off .config_var:not(.tooi-master) {
                 opacity: .4;

@@ -29,6 +29,10 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Changelog
 
+### 0.1.28
+- Post button no longer stays highlighted after you click it and close the viewer.
+- New *General → See-through panel*: settings window slightly transparent (no blur). On by default.
+
 ### 0.1.27
 - Opened posts: the Original button now sits in the post's action bar (next to reply / repost / like), not under the timestamp.
 - Settings: slightly smaller text; removed the duplicate theme button in the header (Theme lives in *General*).
