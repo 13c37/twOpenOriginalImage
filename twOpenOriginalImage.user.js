@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.33
+// @version         0.1.34
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -228,11 +228,6 @@ var DEBUG = false,
         </svg>
     `;
 
-/*
-//const // 参照: [Firefox のアドオン(content_scripts)でXMLHttpRequestやfetchを使う場合の注意 - 風柳メモ](https://memo.furyutei.com/entry/20180718/1531914142)
-//    fetch = (typeof content != 'undefined' && typeof content.fetch == 'function') ? content.fetch  : window.fetch;
-//[覚書] Firefox上のTweetDeck(legacy)ではcontent.fetch()を使うとCSP("connect-src")絡みで画像のダウンロードができなくなってしまう模様(Uncaught (in promise) TypeError: NetworkError when attempting to fetch resource.)(2023/08/14)
-*/
 
 switch ( LANGUAGE ) {
     case 'ja' :
@@ -274,18 +269,18 @@ switch ( LANGUAGE ) {
         OPTIONS.BUTTON_HELP_DO_NOTHING = 'Do nothing';
         OPTIONS.DOWNLOAD_HELPER_BUTTON_TEXT = 'Download';
         OPTIONS.HELP_KEYPRESS_DISPLAY_IMAGES = 'Display original images (' + SCRIPT_NAME + ')';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_NEXT = '[j]next';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_PREVIOUS = '[k]previous';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD = '[d]download';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_NEXT = '[j]Next';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_PREVIOUS = '[k]Previous';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD = '[d]Download';
         OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD_ZIP = '[z]ZIP';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE = '[s]size:';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FULL = 'full';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WIDTH = 'fit-width';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_HEIGHT = 'fit-height';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WINDOW = 'fit-window';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR = '[b]bgcolor:';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_BLACK = 'black';
-        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_WHITE = 'white';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE = '[s]Size: ';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FULL = 'Original';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WIDTH = 'Fit width';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_HEIGHT = 'Fit height';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE_FIT_WINDOW = 'Fit screen';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR = '[b]Background: ';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_BLACK = 'Dark';
+        OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR_WHITE = 'Light';
         break;
 }
 
@@ -454,17 +449,6 @@ var body_computed_style = getComputedStyle( d.body );
 function is_night_mode() {
     if ( is_react_page() ) {
         // 新 Twitter 用判定
-        /*
-        //var header_elem = d.querySelector( 'header[role="banner"]' );
-        //if ( header_elem ) {
-        //    if ( header_elem.querySelector( ':scope > .r-14lw9ot, :scope > .rn-14lw9ot' ) ) {
-        //        return false;
-        //    }
-        //    else if ( header_elem.querySelector( ':scope > .r-bie543, :scope > .rn-bie543' ) ) {
-        //        return true;
-        //    }
-        //}
-        */
         try {
             return ( body_computed_style.backgroundColor != 'rgb(255, 255, 255)' );
             // [2019.08.07] メニューがサイドバーの「ダークモード」から、「もっと見る」＞「表示」＞「背景画像」に変更、種類も3種になった
@@ -573,6 +557,24 @@ function import_node( node, doc ) {
         return imported_node;
     }
 } // end of import_node()
+
+
+function set_help_label( element, text ) {
+    // "[j]next" -> <kbd>j</kbd><span>next</span> (keeps the original strings / translations)
+    var doc = element.ownerDocument,
+        match = String( text ).match( /^\[([^\]]+)\]\s*(.*)$/ );
+    
+    clear_node( element );
+    if ( ! match ) {
+        element.appendChild( doc.createTextNode( text ) );
+        return;
+    }
+    var key = doc.createElement( 'kbd' ),
+        label = doc.createElement( 'span' );
+    key.textContent = match[ 1 ];
+    label.textContent = match[ 2 ];
+    element.append( key, label );
+} // end of set_help_label()
 
 
 function clear_node( node ) {
@@ -1045,33 +1047,6 @@ function get_tweet_link_on_react_twitter( tweet ) {
     if ( timestamp_container ) {
         tweet_link = search_ancestor_by_attribute( timestamp_container, 'role', 'link' );
     }
-    /*
-    //if ( ( ! tweet_link ) || is_tweet_detail_on_react_twitter( tweet ) ) {
-    //    tweet_link = null;
-    //    // ※個別ツイートを表示した場合、自身へのリンクが無い→ページのURLをhrefに持つリンクをダミーで作成し、ツイートソースラベルの前に挿入
-    //    var tweet_url = w.location.href.replace( /[?#].*$/g, '' ),
-    //        tweet_source_label = tweet.querySelector( 'a[role="link"][href*="/help.twitter.com/"]' );
-    //    
-    //    if ( tweet_source_label ) {
-    //        tweet_link = tweet_source_label.parentNode.querySelector( '.' + SCRIPT_NAME + '_tweetdetail_link' );
-    //    }
-    //    
-    //    if ( ! tweet_link ) {
-    //        tweet_link = d.createElement( 'a' );
-    //        tweet_link.className = SCRIPT_NAME + '_tweetdetail_link';
-    //        tweet_link.setAttribute( 'role', 'link' );
-    //        tweet_link.style.display = 'none';
-    //        
-    //        if ( tweet_url.match( /\/status(?:es)?\// ) ) {
-    //            tweet_link.setAttribute( 'href', tweet_url );
-    //        }
-    //        
-    //        if ( tweet_source_label ) {
-    //            tweet_source_label.parentNode.insertBefore( tweet_link, tweet_source_label );
-    //        }
-    //    }
-    //}
-    */
     return tweet_link;
 } // end of get_tweet_link_on_react_twitter()
 
@@ -1088,32 +1063,6 @@ function get_text_from_element( element ) {
 } // end of get_text_from_element()
 
 
-/*
-//function fetch_status( tweet_id ) {
-//    const
-//        //auth_bearer = 'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
-//        auth_bearer = 'AAAAAAAAAAAAAAAAAAAAAF7aAAAAAAAASCiRjWvh7R5wxaKkFp7MM%2BhYBqM%3DbQ0JPmjU9F6ZoMhDfI4uTNAaQuTDm2uO9x3WFVr2xBZ2nhjdP0';
-//    return fetch(
-//        ( is_react_twitter() ? 'https://twitter.com/i/api' : 'https://api.twitter.com' ) + '/1.1/statuses/show.json?include_my_retweet=true&include_entities=true&trim_user=false&include_ext_alt_text=true&include_card_uri=true&tweet_mode=extended&id=' + encodeURIComponent( tweet_id ), {
-//        method: 'GET',
-//        headers: {
-//            'authorization' : `Bearer ${auth_bearer}`,
-//            'x-csrf-token' : document.cookie.match( /ct0=(.*?)(?:;|$)/ )[ 1 ],
-//            'x-twitter-active-user' : 'yes',
-//            'x-twitter-auth-type' : 'OAuth2Session',
-//            'x-twitter-client-language' : 'en',
-//        },
-//        mode: 'cors',
-//        credentials : 'include',
-//    } )
-//    .then( response => {
-//        if ( ! response.ok ) {
-//            throw new Error( 'Network response was not ok' );
-//        }
-//        return response.json()
-//    } );
-//} // end of fetch_status()
-*/
 
 
 const
@@ -1141,13 +1090,6 @@ const
                     is_ready = false;
                 
                 return async () => {
-                    /*
-                    //[TODO] 最初だけのチェックだとなぜかその後のsendMessage()でもエラーが発生する場合がある模様
-                    //→暫定的に、常にチェック
-                    //if (is_ready) {
-                    //    return;
-                    //}
-                    */
                     for (;;) {
                         try {
                             const
@@ -1729,23 +1671,6 @@ function download_zip( tweet_info_json ) {
                 callback( result, false );
             }
             else {
-                /*
-                //const
-                //    error_message = 'download_zip() extension_functions.async_get_tweet_info() failure';
-                //callback( {
-                //    error_message,
-                //}, true );
-                */
-                /*
-                //fetch_status( tweet_id )
-                //.then( result => {
-                //    callback( result, false );
-                //} )
-                //.catch( error => {
-                //    log_error( 'download_zip() fetch_status() error:', error );
-                //    callback( error, true );
-                //} );
-                */
                 log_warn( 'download_zip() extension_functions.async_get_tweet_info() failure' );
                 try {
                     const
@@ -1760,16 +1685,6 @@ function download_zip( tweet_info_json ) {
         } )();
     }
     else {
-        /*
-        //fetch_status( tweet_id )
-        //.then( result => {
-        //    callback( result, false );
-        //} )
-        //.catch( error => {
-        //    log_error( 'download_zip() fetch_status() error:', error );
-        //    callback( error, true );
-        //} );
-        */
         ( async () => {
             try {
                 const
@@ -1839,28 +1754,6 @@ function initialize_download_helper() {
             return;
         }
         
-        /*
-        //extension_list.forEach( function( extension ) {
-        //    if ( current_extension == extension ) {
-        //        return;
-        //    }
-        //    var try_img = new Image(),
-        //        try_url = img_url.replace( '.' + current_extension, '.' + extension );
-        //    
-        //    add_event( try_img, 'load', function ( event ) {
-        //        w.location.replace( try_url );
-        //    } );
-        //    
-        //    try {
-        //        try_img.src = try_url;
-        //    }
-        //    catch ( error ) {
-        //        //log_error( error );
-        //        // TODO: Firefox だとうまくいかない
-        //        // Content Security Policy: ページの設定により次のリソースの読み込みをブロックしました: (try_url) ("img-src https://abs.twimg.com https://ssl.google-analytics.com http://www.google-analytics.com")
-        //    }
-        //} );
-        */
         
         ( async () => {
             const
@@ -2100,7 +1993,7 @@ function initialize( user_options ) {
     var add_open_button = ( function () {
         var button_container_classname = SCRIPT_NAME + 'Button',
             opened_name_map = {},
-            top_offset = 26,
+            top_offset = 52, // overlay header height
             
             MouseClick = {
                 move_count : 0
@@ -2377,7 +2270,7 @@ function initialize( user_options ) {
                 var help_item_template = d.createElement( 'span' ),
                     help_item_template_style = help_item_template.style;
                 
-                help_item_template_style.className = 'help-item';
+                help_item_template.className = 'help-item';
                 help_item_template_style.marginRight = '4px';
                 help_item_template_style.fontSize = '14px';
                 help_item_template_style.fontWeight = 'normal';
@@ -2788,38 +2681,6 @@ function initialize( user_options ) {
                             
                             return;
                             
-                            /*
-                            //if (
-                            //    is_firefox() ||
-                            //    // TODO: Firefox の場合、IFRAME 経由で呼び出すと、ダウンロード用の a#href に blob:～ を入れた時点で CSP に引っかかってしまう
-                            //    // →対策として、cross-domain 対応の GM_xmlhttpRequest を使用し、IFRAME 経由ではなく直接呼び出し
-                            //    is_edge()
-                            //    // TODO: MS-Edge ＋ Tampermonkey の場合、IFRAME 経由で呼び出すと、window.name の値が読めない
-                            //    // → Firefox と同じく、cross-domain 対応の GM_xmlhttpRequest を使用し、IFRAME 経由ではなく直接呼び出し
-                            //) {
-                            //    
-                            //    if ( typeof GM_xmlhttpRequest == 'function' ) {
-                            //        download_zip( tweet_info_json );
-                            //    }
-                            //    else {
-                            //        w.open( img_urls[ 0 ], encodeURIComponent( tweet_info_json ) );
-                            //    }
-                            //    return false;
-                            //}
-                            //
-                            //var old_iframe = d.querySelector( 'iframe#' + SCRIPT_NAME + '_download_zip_frame' ),
-                            //    iframe = import_node( download_frame_template );
-                            //
-                            //
-                            //if ( old_iframe ) {
-                            //    old_iframe.parentNode.removeChild( old_iframe );
-                            //    old_iframe = null;
-                            //}
-                            //iframe.id = SCRIPT_NAME + '_download_zip_frame';
-                            //iframe.name = encodeURIComponent( tweet_info_json );
-                            //iframe.src = img_urls[ 0 ];
-                            //d.documentElement.appendChild( iframe );
-                            */
                         } // end of image_overlay_container_download_image_zip()
                         
                         
@@ -2939,7 +2800,7 @@ function initialize( user_options ) {
                     image_overlay_loading = ( function () {
                         var image_overlay_loading = d.createElement( 'div' ),
                             image_overlay_loading_style = image_overlay_loading.style,
-                            loading = d.createElement( 'img' ),
+                            loading = d.createElement( 'div' ),
                             loading_style = loading.style;
                         
                         image_overlay_loading.id = SCRIPT_NAME + '_image_overlay_loading';
@@ -2951,16 +2812,19 @@ function initialize( user_options ) {
                         image_overlay_loading_style.bottom = 0;
                         image_overlay_loading_style.left = 0;
                         image_overlay_loading_style.zIndex = 10010;
-                        image_overlay_loading_style.background = 'rgba( 255, 255, 255, 0.8 )';
+                        image_overlay_loading_style.background = 'transparent';
                         
-                        loading.src = 'https://abs.twimg.com/a/1460504487/img/t1/spinner-rosetta-gray-32x32.gif';
+                        loading.appendChild( d.importNode( new DOMParser().parseFromString( LOADING_SVG, 'application/xml' ).documentElement, true ) );
+                        loading_style.width = '40px';
+                        loading_style.height = '40px';
+                        loading_style.color = 'rgb(29, 155, 240)';
                         loading_style.position = 'absolute';
                         loading_style.top = 0;
                         loading_style.right = 0;
                         loading_style.bottom = 0;
                         loading_style.left = 0;
                         loading_style.margin = 'auto';
-                        loading_style.opacity = 0.8;
+                        loading_style.opacity = 1;
                         
                         image_overlay_loading.appendChild( loading );
                         
@@ -2978,7 +2842,8 @@ function initialize( user_options ) {
                         image_overlay_close_link_style.cssFloat = 'right';
                         image_overlay_close_link_style.margin = '0 8px';
                         
-                        image_overlay_close_link.appendChild( d.createTextNode( OPTIONS.CLOSE_TEXT ) );
+                        image_overlay_close_link.appendChild( d.createTextNode( '\u2715' ) );
+                        image_overlay_close_link.setAttribute( 'aria-label', OPTIONS.CLOSE_TEXT );
                         
                         return image_overlay_close_link;
                     } )(),
@@ -3104,8 +2969,11 @@ function initialize( user_options ) {
                 target_document = d;
             }
             
-            var remaining_images_counter = 0,
-                filename_prefix = get_filename_prefix( tweet_url );
+            var filename_prefix = get_filename_prefix( tweet_url ),
+                start_index = Math.max( 0, img_urls.indexOf( start_img_url ) ),
+                loaded_flags = img_urls.map( () => false ),
+                ready_fired = false,
+                on_late_load = options.on_late_load;
             
             img_urls.forEach( function ( img_url, index ) {
                 var img = import_node( img_template, target_document ),
@@ -3130,26 +2998,6 @@ function initialize( user_options ) {
                             event.stopPropagation();
                             event.preventDefault();
                             
-                            /*
-                            //var old_iframe = target_document.querySelector( 'iframe[name="' + SCRIPT_NAME + '_download_frame' + '"]' ),
-                            //    iframe = import_node( download_frame_template, target_document );
-                            //
-                            //if ( old_iframe ) {
-                            //    target_document.documentElement.removeChild( old_iframe );
-                            //    old_iframe = null;
-                            //}
-                            //iframe.src = img_url;
-                            //target_document.documentElement.appendChild( iframe );
-                            */
-                            /*
-                            //if ( typeof GM_download == 'function' ) {
-                            //    // TODO: GM_download() だとダウンロード先フォルダが記憶されない(？)
-                            //    GM_download( {
-                            //        url : download_link.href,
-                            //        name : img_filename,
-                            //    } );
-                            //}
-                            */
                             if ( typeof GM_xmlhttpRequest == 'function' ) {
                                 GM_xmlhttpRequest( {
                                     method : 'GET',
@@ -3210,15 +3058,31 @@ function initialize( user_options ) {
                 
                 img.className = 'original-image';
                 
-                remaining_images_counter ++;
+                img.decoding = 'async';
+                if ( index == start_index ) {
+                    img.setAttribute( 'fetchpriority', 'high' );
+                }
                 
                 function check_loaded_image( event ) {
-                    img.setAttribute( 'width', img.naturalWidth );
-                    img.setAttribute( 'height', img.naturalHeight );
+                    if ( img.naturalWidth ) {
+                        img.setAttribute( 'width', img.naturalWidth );
+                        img.setAttribute( 'height', img.naturalHeight );
+                    }
+                    loaded_flags[ index ] = true;
                     
-                    remaining_images_counter --;
-                    if ( remaining_images_counter <= 0 && typeof callback == 'function' ) {
-                        callback();
+                    if ( ready_fired ) {
+                        // photo below the visible one finished later: re-apply the current fit mode
+                        if ( typeof on_late_load == 'function' ) {
+                            on_late_load( img );
+                        }
+                        return;
+                    }
+                    // the clicked photo and everything above it are ready -> show the viewer now
+                    if ( loaded_flags.slice( 0, start_index + 1 ).every( Boolean ) ) {
+                        ready_fired = true;
+                        if ( typeof callback == 'function' ) {
+                            callback();
+                        }
                     }
                 } // end of check_loaded_image()
                 
@@ -3402,12 +3266,6 @@ function initialize( user_options ) {
                     html_style.overflowY = saved_html_overflowY;
                 }
                 else {
-                    /*
-                    //[2020.12] Twitter側の変更のためか、一番上にスクロールしてしまうようになってしまった
-                    //body_style.marginRight = saved_body_marginRight;
-                    //body_style.overflowX = saved_body_overflowX;
-                    //body_style.overflowY = saved_body_overflowY;
-                    */
                     html_style.overflowX = saved_html_overflowX;
                     html_style.overflowY = saved_html_overflowY;
                 }
@@ -3424,25 +3282,16 @@ function initialize( user_options ) {
             clear_node( image_overlay_image_container );
             
             image_overlay_close_link.href = tweet_url;
-            image_overlay_close_link.title = title;
+            image_overlay_close_link.title = OPTIONS.CLOSE_TEXT + ( title ? ' \u2014 ' + title : '' );
             image_overlay_close_link.setAttribute( 'data-fullname', fullname );
             image_overlay_close_link.setAttribute( 'data-username', username );
             image_overlay_close_link.setAttribute( 'data-timestamp-ms', timestamp_ms );
             image_overlay_close_link.setAttribute( 'data-img-urls', encodeURIComponent( JSON.stringify( img_urls ) ) );
             image_overlay_close_link.setAttribute( 'data-all-img-urls', encodeURIComponent( JSON.stringify( all_img_urls ) ) );
             
-            if ( is_night_mode() ) {
-                image_overlay_close_link.style.color = 'white';
-                image_overlay_header.style.color = 'white';
-                image_overlay_header.style.background = '#1b2836';
-                image_overlay_header.style.borderBottom = 'solid 1px #141D26';
-            }
-            else {
-                image_overlay_close_link.style.color = 'black';
-                image_overlay_header.style.color = 'black';
-                image_overlay_header.style.background = 'white';
-                image_overlay_header.style.borderBottom = 'solid 1px silver';
-            }
+            image_overlay_header.setAttribute( 'data-nightmode', is_night_mode() ? 'true' : 'false' );
+            
+            var late_fit_timer = null;
             
             add_images_to_page( img_urls, tweet_url, image_overlay_image_container, {
                 start_img_url : start_img_url
@@ -3452,6 +3301,17 @@ function initialize( user_options ) {
                     }
                     image_overlay_loading_style.display = 'none';
                     fire_event( image_overlay_container, 'image-init' );
+                }
+            ,   on_late_load : function () {
+                    if ( image_overlay_container.style.display == 'none' ) {
+                        return;
+                    }
+                    clearTimeout( late_fit_timer );
+                    late_fit_timer = setTimeout( function () {
+                        // only the handler for the active size mode does anything
+                        fire_event( image_overlay_container, 'image-fit-height' );
+                        fire_event( image_overlay_container, 'image-fit-window' );
+                    }, 50 );
                 }
             } );
             
@@ -3464,7 +3324,7 @@ function initialize( user_options ) {
                     help_move_previous = import_node( help_item_template );
                 
                 help_move_next.classList.add( 'help-move-next' );
-                help_move_next.appendChild( d.createTextNode( OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_NEXT ) );
+                set_help_label( help_move_next, OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_NEXT );
                 add_event( help_move_next, 'click', function ( event ) {
                     event.stopPropagation();
                     event.preventDefault();
@@ -3477,7 +3337,7 @@ function initialize( user_options ) {
                 image_overlay_shortcut_help.appendChild( help_move_next );
                 
                 help_move_previous.classList.add( 'help-move-previous' );
-                help_move_previous.appendChild( d.createTextNode( OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_PREVIOUS ) );
+                set_help_label( help_move_previous, OPTIONS.HELP_OVERLAY_SHORTCUT_MOVE_PREVIOUS );
                 add_event( help_move_previous, 'click', function ( event ) {
                     event.stopPropagation();
                     event.preventDefault();
@@ -3494,7 +3354,7 @@ function initialize( user_options ) {
                 var help_download = import_node( help_item_template );
                 
                 help_download.classList.add( 'help-download' );
-                help_download.appendChild( d.createTextNode( OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD ) );
+                set_help_label( help_download, OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD );
                 
                 add_event( help_download, 'click', function ( event ) {
                     event.stopPropagation();
@@ -3512,7 +3372,7 @@ function initialize( user_options ) {
                 var help_download_zip = import_node( help_item_template );
                 
                 help_download_zip.classList.add( 'help-download-zip' );
-                help_download_zip.appendChild( d.createTextNode( OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD_ZIP ) );
+                set_help_label( help_download_zip, OPTIONS.HELP_OVERLAY_SHORTCUT_DOWNLOAD_ZIP );
                 
                 add_event( help_download_zip, 'click', function ( event ) {
                     event.stopPropagation();
@@ -3791,8 +3651,7 @@ function initialize( user_options ) {
                     
                     adjust_last_image_link_container();
                     
-                    clear_node( help );
-                    help.appendChild( d.createTextNode( OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE + OPTIONS[ help_image_size_types[ next_size ] ] ) );
+                    set_help_label( help, OPTIONS.HELP_OVERLAY_SHORTCUT_SIZE + OPTIONS[ help_image_size_types[ next_size ] ] );
                     
                     image_size = next_size;
                     
@@ -3872,8 +3731,7 @@ function initialize( user_options ) {
                         img.style.background = background_color;
                     } );
                     
-                    clear_node( help );
-                    help.appendChild( d.createTextNode( OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR + OPTIONS[ ( background_color == 'black' ) ? 'HELP_OVERLAY_SHORTCUT_BGCOLOR_BLACK' : 'HELP_OVERLAY_SHORTCUT_BGCOLOR_WHITE' ] ) );
+                    set_help_label( help, OPTIONS.HELP_OVERLAY_SHORTCUT_BGCOLOR + OPTIONS[ ( background_color == 'black' ) ? 'HELP_OVERLAY_SHORTCUT_BGCOLOR_BLACK' : 'HELP_OVERLAY_SHORTCUT_BGCOLOR_WHITE' ] );
                     
                     image_background_color = background_color;
                     
@@ -3904,12 +3762,6 @@ function initialize( user_options ) {
                 body_style.marginRight = 0;
             }
             else {
-                /*
-                //[2020.12] Twitter側の変更のためか、一番上にスクロールしてしまうようになってしまった
-                //body_style.overflowX = 'hidden';
-                //body_style.overflowY = 'hidden';
-                //body_style.marginRight = 0;
-                */
                 html_style.overflowX = 'hidden';
                 html_style.overflowY = 'hidden';
             }
@@ -4770,34 +4622,6 @@ function initialize( user_options ) {
             ancestor;
         
         if ( is_react_page() ) {
-            /*
-            //if ( ! search_ancestor_by_attribute( node, 'data-testid', 'primaryColumn', true ) ) {
-            //    return false;
-            //}
-            //tweet_list = to_array( node.querySelectorAll( 'div[data-testid="tweet"], article[data-testid="tweetDetail"]' ) );
-            //// ※ [2019.08.07] article[data-testid="tweetDetail"] は無くなり、article[role="article"] に置き換わっている
-            //
-            //if ( 0 <= [ 'DIV', 'ARTICLE' ].indexOf( node.tagName ) ) {
-            //    if ( 0 <= [ 'tweet', 'tweetDetail' ].indexOf( node.getAttribute( 'data-testid' ) ) ) {
-            //        tweet_list.push( node );
-            //    }
-            //    else if ( ! has_some_classes( node, [ SCRIPT_NAME + 'Button' ] ) ) {
-            //        tweet = search_ancestor_by_attribute( node, 'data-testid', [ 'tweet', 'tweetDetail' ] ) || search_ancestor_by_attribute( node, 'role', 'article' );
-            //        
-            //        if ( tweet ) {
-            //            tweet_list.push( tweet );
-            //        }
-            //    }
-            //}
-            //tweet_list.forEach( function ( tweet ) {
-            //    var article = search_ancestor_by_attribute( tweet, 'role', 'article' );
-            //    
-            //    if ( article ) {
-            //        tweet = article;
-            //    }
-            //    add_open_button( tweet );
-            //} );
-            */
             const
                article_selector = is_react_tweetdeck() ? 'div[data-testid="cellInnerDiv"] article[role="article"]' : 'div[data-testid="primaryColumn"] article[role="article"]';
                
@@ -4855,17 +4679,6 @@ function initialize( user_options ) {
                 return false;
             }
             
-            /*
-            ////var modal_header_h2_list = d.querySelectorAll( '[aria-labelledby="modal-header"] h2[data-testid="noRightControl"]' );
-            //var modal_header_h2_list = d.querySelectorAll( '[aria-labelledby="modal-header"] h2[role="heading"][aria-level="2"]:not(#modal-header)' );
-            //
-            //if ( modal_header_h2_list.length < 1 ) {
-            //    return false;
-            //}
-            //
-            //var shortcut_parent = modal_header_h2_list[ modal_header_h2_list.length - 1 ].parentNode.parentNode;
-            //
-            */
             
             var shortcut_parents = d.querySelectorAll( '[aria-labelledby="modal-header"] ul[role="list"]' );
             
@@ -5429,6 +5242,25 @@ function initialize( user_options ) {
                 css_rule_lines.push( 'body[data-nightmode="true"] ' + button_selector + ':hover {color: #fff; text-decoration: none; background-color: #10171e; background-image: none; border-color: #10171e;}' );
             }
         }
+        
+        // Image viewer (overlay): X look, follows X's dark / light mode
+        var header_selector = '#' + SCRIPT_NAME + '_image_overlay_header',
+            night_header = header_selector + '[data-nightmode="true"]';
+        css_rule_lines.push( header_selector + '{box-sizing:border-box; height:52px; margin:0 !important; padding:0 12px !important; background:rgba(255, 255, 255, 0.96) !important; color:#0f1419 !important; border-bottom:1px solid rgb(239, 243, 244) !important; font-family:TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important; font-size:15px !important; font-weight:400 !important; line-height:normal !important; -webkit-font-smoothing:antialiased;}' );
+        css_rule_lines.push( night_header + '{background:rgba(0, 0, 0, 0.92) !important; color:#e7e9ea !important; border-bottom-color:rgb(47, 51, 54) !important;}' );
+        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_shortcut_help_overlay{display:flex; flex-wrap:nowrap; gap:6px; height:52px; align-items:center; margin:0 !important; overflow:hidden; max-width:calc(50% - 60px);}' );
+        css_rule_lines.push( header_selector + ' .help-item{display:inline-flex; align-items:center; gap:6px; height:30px; margin:0 !important; padding:0 12px 0 6px; border-radius:9999px; background:rgba(15, 20, 25, 0.06); font-size:13px !important; white-space:nowrap; cursor:pointer; user-select:none; transition:background-color .15s;}' );
+        css_rule_lines.push( header_selector + ' .help-item:hover{background:rgba(29, 155, 240, 0.12);}' );
+        css_rule_lines.push( night_header + ' .help-item{background:rgba(231, 233, 234, 0.08);}' );
+        css_rule_lines.push( night_header + ' .help-item:hover{background:rgba(29, 155, 240, 0.2);}' );
+        css_rule_lines.push( header_selector + ' .help-item kbd{display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box; border-radius:5px; background:rgba(15, 20, 25, 0.1); font:700 11px/1 inherit; text-transform:uppercase;}' );
+        css_rule_lines.push( night_header + ' .help-item kbd{background:rgba(231, 233, 234, 0.16);}' );
+        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_status_overlay{top:0 !important; left:50% !important; width:auto !important; padding:0 !important; transform:translateX(-50%); line-height:52px; font-size:15px; font-weight:700; text-align:center !important;}' );
+        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_close_overlay{display:grid !important; place-items:center; width:36px; height:36px; margin:8px 0 0 !important; border-radius:9999px; color:inherit !important; font-size:18px; text-decoration:none; transition:background-color .15s;}' );
+        css_rule_lines.push( header_selector + ' .' + SCRIPT_NAME + '_close_overlay:hover{background:rgba(15, 20, 25, 0.1);}' );
+        css_rule_lines.push( night_header + ' .' + SCRIPT_NAME + '_close_overlay:hover{background:rgba(231, 233, 234, 0.1);}' );
+        css_rule_lines.push( '#' + SCRIPT_NAME + '_image_overlay_container .image-link-container{padding-bottom:8px !important;}' );
+        css_rule_lines.push( '@media (max-width: 760px){' + header_selector + ' .help-item span{display:none;} ' + header_selector + ' .help-item{padding:0 6px;}}' );
         
         to_array( d.querySelectorAll( 'style.' + SCRIPT_NAME + '-css-rule' ) ).forEach( function ( old_style_css_rull ) {
             old_style_css_rull.parentNode.removeChild( old_style_css_rull );

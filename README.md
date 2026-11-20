@@ -33,6 +33,13 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Changelog
 
+### 0.1.34 — image viewer
+- **Opens faster**: the viewer appears as soon as the photo you clicked (and the ones above it) has loaded, instead of waiting for all photos. On 20-photo posts with full-size originals this is the biggest win. Photos further down still fit the screen when they arrive.
+- **New header in X's style**: follows X dark/light mode, X font, keys shown as small labels (J Next, K Previous, D Download, S Size, B Background), round ✕ close. Labels collapse to keys on narrow windows.
+- Loading spinner is now drawn locally (the old one was a 2016 image from Twitter's servers) and no longer flashes a white screen in dark mode.
+- Images decode off the main thread (`decoding=async`), the clicked photo loads first (`fetchpriority=high`).
+- Removed ~230 lines of commented-out old code.
+
 ### 0.1.33
 - Removed `@contributionURL`: Greasy Fork showed it as "Thank 13c37 by making a donation" while it pointed to furyu. furyu's donation link stays in Credits and in the settings window.
 
