@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.26
+// @version         0.1.27
 // @include         http://twitter.com/*
 // @include         https://twitter.com/*
 // @include         https://x.com/*
@@ -4200,9 +4200,18 @@ function initialize( user_options ) {
             if ( is_react_page() ) {
                 if ( ! action_list ) {
                     if ( is_tweet_detail_on_react_twitter( tweet ) ) {
-                        action_list = get_tweet_link_on_react_twitter( tweet );
+                        // Opened post: use its action bar (reply / repost / like ...) like on the timeline
+                        action_list = [ ... tweet_container.querySelectorAll( '[role="group"]' ) ].find( group => group.querySelector( '[data-testid="reply"]' ) ) || null;
                         if ( action_list ) {
-                            action_list = action_list.parentNode;
+                            if ( OPTIONS.DISPLAY_ORIGINAL_BUTTONS && ( ! is_react_tweetdeck() ) ) {
+                                action_list.style.maxWidth = 'initial';
+                            }
+                        }
+                        else {
+                            action_list = get_tweet_link_on_react_twitter( tweet );
+                            if ( action_list ) {
+                                action_list = action_list.parentNode;
+                            }
                         }
                     }
                     else {
@@ -5853,7 +5862,7 @@ async function init_gm_menu() {
                 config_header.textContent = '';
                 config_header.append(
                     make( 'div', { className : 'tooi-title' }, header_link, version_badge ),
-                    make( 'div', { className : 'tooi-actions' }, theme_button, x_button )
+                    make( 'div', { className : 'tooi-actions' }, x_button )
                 );
                 
                 // Credits: original author, website, donation
@@ -6071,7 +6080,7 @@ async function init_gm_menu() {
                 align-items: center;
                 justify-content: center;
                 background: transparent !important;
-                font-size: 15px;
+                font-size: 14px;
                 -webkit-font-smoothing: antialiased;
             }
 
@@ -6139,7 +6148,7 @@ async function init_gm_menu() {
 
             #${config_id}_header-title-link {
                 color: var(--text);
-                font-size: 20px;
+                font-size: 17px;
                 font-weight: 700;
                 text-decoration: none;
                 white-space: nowrap;
@@ -6209,7 +6218,7 @@ async function init_gm_menu() {
                 border: none;
                 background: transparent;
                 color: var(--text);
-                font-size: 15px;
+                font-size: 14px;
                 font-weight: 700;
                 text-align: left;
             }
@@ -6220,7 +6229,7 @@ async function init_gm_menu() {
                 align-items: center;
                 justify-content: space-between;
                 gap: 16px;
-                min-height: 40px;
+                min-height: 36px;
                 margin: 0;
                 padding: 4px 8px;
                 border-radius: 8px;
@@ -6238,9 +6247,9 @@ async function init_gm_menu() {
                 display: block;
                 min-width: 0;
                 margin: 0;
-                font-size: 15px;
+                font-size: 14px;
                 font-weight: 400;
-                line-height: 20px;
+                line-height: 18px;
                 color: var(--text);
                 cursor: pointer;
             }
@@ -6251,13 +6260,13 @@ async function init_gm_menu() {
                 flex: none;
                 width: 232px;
                 max-width: 60%;
-                height: 32px;
+                height: 30px;
                 padding: 0 8px;
                 border: 1px solid var(--field-border);
                 border-radius: 4px;
                 background-color: var(--field);
                 color: var(--text);
-                font-size: 14px;
+                font-size: 13px;
                 outline: none;
             }
 
@@ -6282,8 +6291,8 @@ async function init_gm_menu() {
                 appearance: none;
                 position: relative;
                 flex: none;
-                width: 38px;
-                height: 22px;
+                width: 36px;
+                height: 20px;
                 margin: 0;
                 border-radius: 9999px;
                 background: var(--switch-off);
@@ -6296,8 +6305,8 @@ async function init_gm_menu() {
                 position: absolute;
                 top: 3px;
                 left: 3px;
-                width: 16px;
-                height: 16px;
+                width: 14px;
+                height: 14px;
                 border-radius: 50%;
                 background: #fff;
                 transition: transform .15s ease;
@@ -6331,7 +6340,7 @@ async function init_gm_menu() {
                 margin: 0 -20px;
                 padding: 10px 20px;
                 border-top: 1px solid var(--line);
-                font-size: 13px;
+                font-size: 12px;
                 color: var(--muted);
             }
 
@@ -6393,7 +6402,7 @@ async function init_gm_menu() {
             #${config_id} .reset,
             #${config_id} .reset a {
                 color: var(--muted);
-                font-size: 14px;
+                font-size: 13px;
                 text-decoration: none;
             }
 
@@ -6403,13 +6412,13 @@ async function init_gm_menu() {
 
             #${config_id} .saveclose_buttons {
                 margin: 0;
-                height: 36px;
-                padding: 0 18px;
+                height: 32px;
+                padding: 0 16px;
                 border-radius: 9999px;
                 border: 1px solid var(--field-border);
                 background: transparent;
                 color: var(--text);
-                font-size: 15px;
+                font-size: 14px;
                 font-weight: 700;
                 cursor: pointer;
             }
@@ -6430,7 +6439,7 @@ async function init_gm_menu() {
             }
 
             #${config_id}_save-status {
-                font-size: 14px;
+                font-size: 13px;
             }
 
             #${config_id} .warning {

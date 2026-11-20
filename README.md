@@ -21,13 +21,17 @@ Use the **Original** button in the action bar of any post with photos:
 | One image per page | <kbd>Alt</kbd> + Click |
 | Download selected image | <kbd>Shift</kbd> + Click |
 
-Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) is under *General*, or use the ◐ button in the dialog header.
+Settings: userscript manager menu → **Settings**. Theme (dark / light / auto) is under *General*.
 
 ## Bugs
 
 Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the post URL and your browser + userscript manager.
 
 ## Changelog
+
+### 0.1.27
+- Opened posts: the Original button now sits in the post's action bar (next to reply / repost / like), not under the timestamp.
+- Settings: slightly smaller text; removed the duplicate theme button in the header (Theme lives in *General*).
 
 ### 0.1.26
 - **Post button now looks like X's own actions**: X's font (Chirp), grey icon + label, blue hover circle. Empty label = icon only.
