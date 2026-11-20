@@ -29,6 +29,9 @@ Open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## Changelog
 
+### 0.1.32
+- `@include` → `@match` (exact sites, https only; plain http redirects to https anyway).
+
 ### 0.1.31
 - Removed the dead `tweetdeck.twitter.com` match (TweetDeck no longer exists).
 
