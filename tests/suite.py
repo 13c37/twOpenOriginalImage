@@ -8,7 +8,7 @@ only as PNG to exercise the format fallback.
     python tests/suite.py                # tests ../twOpenOriginalImage.user.js
     python tests/suite.py path/to/other.user.js
 """
-import asyncio, json, os, re, sys, time, urllib.parse, urllib.request, colorsys
+import asyncio, base64, json, os, re, sys, time, urllib.parse, urllib.request
 from pathlib import Path
 from playwright.async_api import async_playwright
 
@@ -23,17 +23,34 @@ def check(name, ok, info=''):
     R.append((name, bool(ok)))
     print(('PASS ' if ok else 'FAIL ') + name + (('  [' + str(info) + ']') if info != '' else ''), flush=True)
 
+async def make_images(img):
+    """Draw the 20 test photos (jpg + png) with the browser's canvas: no image library needed."""
+    async with async_playwright() as p:
+        b = await p.chromium.launch(executable_path=os.environ.get('CHROME') or None)
+        pg = await b.new_page()
+        files = await pg.evaluate("""() => {
+            const out = {};
+            for (let i = 0; i < 20; i++) {
+                const c = document.createElement('canvas');
+                c.width = 1600; c.height = (i % 3) ? 1200 : 2000;
+                const g = c.getContext('2d');
+                g.fillStyle = `hsl(${i * 18}, 60%, 55%)`; g.fillRect(0, 0, c.width, c.height);
+                g.fillStyle = '#fff'; g.font = '48px sans-serif'; g.fillText('photo ' + (i + 1), 40, 80);
+                out[`p${i + 1}.jpg`] = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+                out[`p${i + 1}.png`] = c.toDataURL('image/png').split(',')[1];
+            }
+            return out;
+        }""")
+        await b.close()
+    for name, data in files.items():
+        (img / name).write_bytes(base64.b64decode(data))
+
 def prepare():
-    """Fake photos + the GM_config build pinned in the script's @require."""
+    """Test photos + the GM_config build pinned in the script's @require."""
     img = CACHE / 'img'
     img.mkdir(parents=True, exist_ok=True)
     if not (img / 'p20.png').exists():
-        from PIL import Image, ImageDraw
-        for i in range(20):
-            rgb = tuple(int(c * 255) for c in colorsys.hsv_to_rgb(i / 20, 0.6, 0.8))
-            im = Image.new('RGB', (1600, 1200 if i % 3 else 2000), rgb)
-            ImageDraw.Draw(im).text((40, 40), f'photo {i + 1}', fill=(255, 255, 255))
-            im.save(img / f'p{i + 1}.jpg', quality=85); im.save(img / f'p{i + 1}.png')
+        asyncio.run(make_images(img))
     url = re.search(r'@require\s+(\S+gm_config\.js)', SCRIPT.read_text(encoding='utf-8')).group(1)
     gm = CACHE / ('gm_config_' + re.sub(r'\W', '_', url)[-60:] + '.js')
     if not gm.exists():
