@@ -6,6 +6,10 @@
 
 Open and save images from X (Twitter) in original size (`name=orig`). Works on posts with up to 20 photos.
 
+![Demo: open a photo, step through a post, download, switch to original size](docs/demo.webp)
+
+<sub>Demo artwork: [@shockyoupan](https://x.com/shockyoupan), [@hex_termina](https://x.com/hex_termina).</sub>
+
 **Actively maintained.** Continuation of furyu's *Twitter 原寸びゅー* (twOpenOriginalImage), which was discontinued at 0.1.16.
 
 ## Install
@@ -25,7 +29,11 @@ Click any photo in a post (or enable the icon button under *Post button* in Sett
 | One image per page | <kbd>Alt</kbd> + Click |
 | Download selected image | <kbd>Shift</kbd> + Click |
 
+In the viewer: <kbd>j</kbd> / <kbd>k</kbd> next / previous · <kbd>d</kbd> download · <kbd>z</kbd> zip · <kbd>s</kbd> size · <kbd>b</kbd> background · <kbd>esc</kbd> close.
+
 Settings: userscript manager menu → **settings**. Theme (dark / light / auto) is under *General*.
+
+<img src="docs/settings.png" alt="Settings window" width="720">
 
 ## Bugs
 
