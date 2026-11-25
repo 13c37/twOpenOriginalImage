@@ -1,3 +1,3 @@
-This folder is retained for compatibility with older versions.
+this folder is retained for compatibility with older versions.
 
-The contents of this folder are no longer used in new versions.
+the contents of this folder are no longer used in new versions.
