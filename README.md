@@ -41,6 +41,9 @@ open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## changelog
 
+### 0.1.40
+- fixed: opening a later photo of a post scrolled visibly through the other photos; the viewer now opens right on the clicked one.
+
 ### 0.1.39
 - script description mentions the new twitter / x layout; the japanese one no longer mentions tweetdeck.
 
