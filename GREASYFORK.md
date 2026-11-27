@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/13c37/twOpenOriginalImage/main/docs/demo.webp" alt="demo: open a photo, step through a post, download, switch to original size" width="800">
 
-<sub>demo artwork: @shockyoupan, @hex_termina</sub>
+<sub>demo recorded on the old layout; the viewer looks the same on the new one. demo artwork: @shockyoupan, @hex_termina</sub>
 
 **works on the new twitter / x layout** (the redesign rolling out since november 2026) **and the old one.** the script detects which one you have on every page load, nothing to set up.
 
