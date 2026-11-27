@@ -41,6 +41,9 @@ open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the po
 
 ## changelog
 
+### 0.1.38
+- works on x's redesigned website (being rolled out since november 2026); the old design keeps working.
+
 ### 0.1.37
 - viewer and download buttons use x's font, matching the settings window and post button.
 
