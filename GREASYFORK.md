@@ -4,6 +4,8 @@
 
 <sub>demo artwork: @shockyoupan, @hex_termina</sub>
 
+**works on the new twitter / x layout** (the redesign rolling out since november 2026) **and the old one.** the script detects which one you have on every page load, nothing to set up.
+
 ### what's new compared to older versions
 - works with posts that have **up to 20 photos** (older versions only picked up ~6)
 - viewer opens instantly with a loading indicator
