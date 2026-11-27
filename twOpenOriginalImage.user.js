@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.39
+// @version         0.1.40
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -3772,7 +3772,6 @@ function initialize( user_options ) {
                 
                 function change_size( next_size ) {
                     var width_max = 0,
-                        all_image_loaded = true,
                         original_images = to_array( image_overlay_image_container.querySelectorAll( 'img.original-image' ) ),
                         image_link_containers =to_array( image_overlay_image_container.querySelectorAll( '.image-link-container' ) );
                     
@@ -3780,9 +3779,6 @@ function initialize( user_options ) {
                     image_overlay_container.style.overflowY = 'auto';
                     
                     original_images.forEach( function ( img ) {
-                        if ( ! img.naturalWidth ) {
-                            all_image_loaded = false;
-                        }
                         if ( width_max < img.naturalWidth ) {
                             width_max = img.naturalWidth;
                         }
@@ -3864,16 +3860,16 @@ function initialize( user_options ) {
                         fire_event( image_overlay_container, 'scroll-to-current-image-container' );
                     }, 100 );
                     
-                    if ( all_image_loaded ) {
-                        switch ( image_size ) {
-                            case 'fit-height' :
-                                fire_event( image_overlay_container, 'image-fit-height' );
-                                break;
-                            
-                            case 'fit-window' :
-                                fire_event( image_overlay_container, 'image-fit-window' );
-                                break;
-                        }
+                    // fit right away, also while photos below are still loading: the viewer then opens with the
+                    // clicked photo already in place (late photos are re-fitted as they arrive)
+                    switch ( image_size ) {
+                        case 'fit-height' :
+                            fire_event( image_overlay_container, 'image-fit-height' );
+                            break;
+
+                        case 'fit-window' :
+                            fire_event( image_overlay_container, 'image-fit-window' );
+                            break;
                     }
                     
                     localStorage[ SCRIPT_NAME + '_saved_image_size' ] = image_size;

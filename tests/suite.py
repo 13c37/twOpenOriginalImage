@@ -320,6 +320,18 @@ async def main():
     check('E5 no page errors', not st['errs'], st['errs'][:2])
     await b.close()
 
+    # ---- K: opening on a later photo jumps straight to it ----
+    b,ctx,pg,st=await setup(p)
+    await ev(pg,f"""()=>{{window.__pos=[];const tick=()=>{{const o=document.querySelector('{OV}'),ic=o&&o.querySelector('[class$=_image_overlay_image_container]'),s=o&&o.querySelector('.image-link-container.start');
+      if(o&&s&&getComputedStyle(o).display!='none'&&getComputedStyle(ic).visibility=='visible')__pos.push(Math.round(s.getBoundingClientRect().top));
+      if(!window.__stop)requestAnimationFrame(tick)}};requestAnimationFrame(tick)}}""")
+    await pg.click('[id="111"] a[href$="/photo/4"] img'); await ready(pg); await pg.wait_for_timeout(1500)
+    pos=await ev(pg,'()=>{window.__stop=1;return __pos}'); s=await status(pg)
+    check('K1 viewer opens on photo 4 of 20', s=='4 / 20', s)
+    check('K2 photo 4 is in place from the first frame on (no scrolling through other photos)', pos and 0<=pos[-1]<=60 and max(pos)-min(pos)<=2, (len(pos),sorted(set(pos))[:8]))
+    check('K3 no page errors', not st['errs'], st['errs'][:2])
+    await b.close()
+
     # ---- F to J: x's redesigned web client ----
     await new_client(p)
   n=sum(ok for _,ok in R); print(f'\n{n}/{len(R)} passed')
