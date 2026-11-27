@@ -8,7 +8,7 @@ open and save images from x (twitter) in original size (`name=orig`). works on p
 
 ![demo: open a photo, step through a post, download, switch to original size](docs/demo.webp)
 
-<sub>demo artwork: [@shockyoupan](https://x.com/shockyoupan), [@hex_termina](https://x.com/hex_termina).</sub>
+<sub>demo recorded on the old layout; the viewer looks the same on the new one. demo artwork: [@shockyoupan](https://x.com/shockyoupan), [@hex_termina](https://x.com/hex_termina).</sub>
 
 **actively maintained.** continuation of furyu's *twitter 原寸びゅー* (twOpenOriginalImage), which was discontinued at 0.1.16.
 
