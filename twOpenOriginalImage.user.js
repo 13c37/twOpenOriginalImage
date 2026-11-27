@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.38
+// @version         0.1.39
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -21,8 +21,8 @@
 // @connect         twitter.com
 // @connect         x.com
 // @connect         twimg.com
-// @description     Open images in original size on Twitter.
-// @description:ja  Web版Twitter・TweetDeckで、原寸画像の表示と保存が簡単にできるようになります。
+// @description     open and save x / twitter images in original size. works on the new twitter layout (2026 redesign of x) and the old one.
+// @description:ja  X(Twitter)の新デザイン・旧デザインの両方で、原寸画像の表示と保存が簡単にできるようになります。
 // @homepageURL     https://github.com/13c37/twOpenOriginalImage
 // @supportURL      https://github.com/13c37/twOpenOriginalImage/issues
 // @compatible      chrome+tampermonkey

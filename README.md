@@ -4,7 +4,7 @@
 [![greasy fork installs](https://img.shields.io/greasyfork/dt/606352?label=installs)](https://greasyfork.org/en/scripts/606352-twopenoriginalimage)
 [![license: mit](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-open and save images from x (twitter) in original size (`name=orig`). works on posts with up to 20 photos.
+open and save images from x (twitter) in original size (`name=orig`). works on posts with up to 20 photos, on the new twitter / x layout (2026 redesign) and the old one.
 
 ![demo: open a photo, step through a post, download, switch to original size](docs/demo.webp)
 
@@ -15,7 +15,7 @@ open and save images from x (twitter) in original size (`name=orig`). works on p
 ## install
 
 1. install a userscript manager: [violentmonkey](https://violentmonkey.github.io/), [tampermonkey](https://www.tampermonkey.net/) or [scriptcat](https://docs.scriptcat.org/en/).
-2. install the script from **[greasy fork](https://greasyfork.org/en/scripts/606352-twopenoriginalimage)** or directly from github: [twOpenOriginalImage.user.js](https://github.com/13c37/twOpenOriginalImage/raw/main/twOpenOriginalImage.user.js)
+2. install the script from **[greasy fork](https://greasyfork.org/en/scripts/606352-twopenoriginalimage)** or from the [latest github release](https://github.com/13c37/twOpenOriginalImage/releases/latest/download/twOpenOriginalImage.user.js) ([all releases](https://github.com/13c37/twOpenOriginalImage/releases))
 
 updates arrive automatically through your userscript manager.
 
@@ -40,6 +40,9 @@ settings: userscript manager menu → **settings**. theme (dark / light / auto) 
 open an [issue](https://github.com/13c37/twOpenOriginalImage/issues) with the post url and your browser + userscript manager.
 
 ## changelog
+
+### 0.1.39
+- script description mentions the new twitter / x layout; the japanese one no longer mentions tweetdeck.
 
 ### 0.1.38
 - works on x's redesigned website (being rolled out since november 2026); the old design keeps working.
