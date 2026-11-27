@@ -1,0 +1,62 @@
+<!doctype html><html lang="en" dir="ltr" data-app-env="prod" data-app-version="test" data-theme="dark"><head><meta charset="utf-8"><style>body{background:#000;color:#e7e9ea;font:15px Arial;margin:0}article{display:block;border:1px solid #333;margin:10px auto;width:600px;padding:10px}ul,li{list-style:none;margin:0;padding:0}.row{display:flex;flex-wrap:wrap;gap:2px}.box{position:relative;width:280px;height:150px;overflow:hidden}.box img{width:100%}.box>a{position:absolute;inset:0}[role=group]{display:flex;gap:20px;align-items:center}p{margin:0 0 30px}</style>
+<script>
+window.GM_info={script:{version:'TEST',homepage:''}};window.__menu=[];window.__nav=[];
+const Q=new URLSearchParams(location.search);window.__xhr=[];window.__zip=[];
+window.GM={getValue:async(k,d)=>(Q.get('cfg')&&/Config$/.test(k))?Q.get('cfg'):d,setValue:async()=>{},registerMenuCommand:(n,f)=>__menu.push({n,f})};
+window.GM_getValue=()=>undefined;window.GM_setValue=()=>{};window.GM_xmlhttpRequest=(o)=>{__xhr.push(o.url)};window.GM_download=()=>{};window.JSZip=function(){this.file=(n)=>{__zip.push(n);return this};this.folder=()=>this;this.generateAsync=()=>new Promise(()=>{});};window.saveAs=()=>{};
+// stands in for x's own click handling (its photo viewer / post navigation)
+document.addEventListener('click',(e)=>{const t=e.target.closest('a[href],[data-href]');if(t){__nav.push(t.getAttribute('href')||t.getAttribute('data-href'));e.preventDefault();}});
+</script><script src="https://local.test/gm_config.js"></script></head><body><script>if(Q.get('light')){document.documentElement.dataset.theme='light';document.write('<style>body{background:#fff!important;color:#000}</style>')}</script>
+<!-- layout of x's redesigned web client (2026-11): no #react-root, no data-testid, no <time>, photo links lie on top of an inert <img> -->
+<main><div id="column"></div></main>
+<script>
+const AVATAR='data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+const photo=(user,id,i,alt)=>`<div><div class="box"><div inert><div data-slot="xds-context-menu-trigger"><img alt="${alt||'Image'}" src="https://pbs.twimg.com/media/${id}_${i}?format=jpg&name=large"></div></div><a aria-label="View media" href="/${user}/status/${id}/photo/${i}"></a></div></div>`;
+const photos=(user,id,n,alt)=>'<div class="row">'+Array.from({length:Math.min(n,4)},(_,i)=>photo(user,id,i+1,alt)).join('')+'</div>';
+const header=(user,name,id,time)=>`<div><a href="/${user}"><img alt="" width="16" height="16" src="${AVATAR}"></a> <a href="/${user}"><div dir="auto">${name}</div></a> <a href="/${user}"><span>@${user}</span></a>`+(time?` <span><a href="/${user}/status/${id}">24 Nov</a></span>`:'')+'</div>';
+const text=(s)=>`<div dir="auto" lang="en"><span>${s}</span></div>`;
+const actions=()=>'<div role="group" aria-label="1 reply, 2 reposts, 3 likes"><div data-engagement-action="reply"><button>reply</button></div><div data-engagement-action="retweet"><button>repost</button></div><div data-engagement-action="like"><button>like</button></div><div><span data-engagement-action="bookmark"></span><button data-engagement-action="share">share</button></div></div>';
+// o: {id, user, name, n (photos), alt, video (bool), quote (same shape)}
+const media=(o)=>o.video?`<div><div class="box"><img alt="" src="https://pbs.twimg.com/media/${o.id}_1?format=jpg&name=small"><button>play video</button></div></div>`:(o.n?photos(o.user,o.id,o.n,o.alt):'');
+const quoteFrame=(q)=>`<div role="link" tabindex="0" data-navigation-stop="" data-href="/${q.user}/status/${q.id}" data-slot="embedded-tweet-frame"><a aria-hidden="true" href="/${q.user}/status/${q.id}"></a><article id="t${q.id}">${header(q.user,q.name,q.id,true)}${text('quoted post '+q.id)}${media(q)}</article></div>`;
+const body=(o,time)=>header(o.user,o.name,o.id,time)+text('post '+o.id)+media(o)+(o.quote?quoteFrame(o.quote):'');
+// timeline post (also used for replies)
+const timelinePost=(o)=>`<div role="link" tabindex="0" data-navigation-stop="" data-href="/${o.user}/status/${o.id}"><a aria-hidden="true" href="/${o.user}/status/${o.id}"></a><article id="t${o.id}">${body(o,true)}${actions()}</article></div>`;
+// the opened post on a status page: no data-href wrapper, its own link is the timestamp below the text
+const focalPost=(o)=>`<ul><li><div tabindex="-1" data-navigation-stop=""><article id="t${o.id}">${body(o,false)}<div><a href="/${o.user}/status/${o.id}">22:33 · 24 Nov 2026</a></div>${actions()}</article></div></li></ul>`;
+
+const items=(id,n)=>Array.from({length:n},(_,i)=>({type:'photo',media_url_https:`https://pbs.twimg.com/media/${id}_${i+1}.jpg`}));
+const video=(id)=>({type:'video',media_url_https:`https://pbs.twimg.com/media/${id}_9.jpg`});
+// what react keeps on each photo <img>: a nearby `tweet` without media, higher up the complete list
+function addPostData(o){
+  if(o.quote)addPostData(o.quote);
+  const article=document.getElementById('t'+o.id);if(!article||!(o.n||o.video))return;
+  let list=o.video?[video(o.id)]:items(o.id,o.n);
+  if(o.mixed)list.splice(2,0,video(o.id));
+  const data=o.entities?{tweet:{media_entities2:list}}:{mediaItems:list};
+  for(const img of article.querySelectorAll('img[src*="/media/"]')){
+    if(img.closest('article')!==article)continue;
+    img['__reactFiber$test']={memoizedProps:{},return:{memoizedProps:{tweet:{__fragments:{},__id:'x'}},return:{memoizedProps:data}}};
+  }
+}
+
+const POSTS={
+  '111':{id:'111',user:'nasa',name:'NASA Artemis',n:20},
+  '222':{id:'222',user:'spacex',name:'SpaceX',n:1,alt:'a rocket standing on the launch pad at sunset'},
+  '333':{id:'333',user:'alice',name:'Alice',n:1,quote:{id:'444',user:'bob',name:'Bob',n:2}},
+  '555':{id:'555',user:'vic',name:'Vic',video:true},
+  '666':{id:'666',user:'carol',name:'Carol',n:6,entities:true,mixed:true},
+  '777':{id:'777',user:'dave',name:'Dave',quote:{id:'888',user:'erin',name:'Erin',n:1}},
+  '999':{id:'999',user:'rex',name:'Rex'},
+};
+const column=document.getElementById('column');
+const filler=(n)=>Array.from({length:n},(_,i)=>`<p>filler ${i}</p>`).join('');
+const status=/^\/[^/]+\/status\/(\d+)/.exec(location.pathname);
+const shownPosts=status?[POSTS[status[1]],POSTS['999']]:['111','222','333','555','666','777'].map((id)=>POSTS[id]);
+column.innerHTML=filler(2)+shownPosts.map((o,i)=>(status&&i===0)?focalPost(o):timelinePost(o)).join('')+filler(30);
+shownPosts.forEach(addPostData);
+// a post that x renders later (endless scrolling)
+window.__addPost=()=>{const o={id:'1234',user:'late',name:'Late',n:2};column.insertAdjacentHTML('afterbegin',timelinePost(o));addPostData(o);};
+</script>
+<script src="https://local.test/script.user.js"></script>
+</body></html>

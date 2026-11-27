@@ -10,7 +10,7 @@ only as PNG to exercise the format fallback.
 """
 import asyncio, base64, json, os, re, sys, time, urllib.parse, urllib.request
 from pathlib import Path
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 BASE = Path(__file__).resolve().parent
 CACHE = BASE / '.cache'
@@ -59,11 +59,11 @@ def prepare():
 
 OV = "[id$=_image_overlay_container]"; LD = "[id$=_image_overlay_loading]"; HD = "[id$=_image_overlay_header]"
 
-async def setup(p, query='', locale='en-US'):
+async def setup(p, query='', locale='en-US', fixture='fixture.html', path='/home'):
     b = await p.chromium.launch(executable_path=os.environ.get('CHROME') or None)
     ctx = await b.new_context(viewport={'width': 1280, 'height': 720}, locale=locale)
     st = {'errs': [], 'reqs': [], 't0': time.time()}
-    async def x(r): await r.fulfill(path=BASE / 'fixture.html', content_type='text/html')
+    async def x(r): await r.fulfill(path=BASE / fixture, content_type='text/html')
     async def local(r):
         f = r.request.url.split('/')[-1]
         await r.fulfill(path=SCRIPT if f == 'script.user.js' else GM_CONFIG, content_type='application/javascript')
@@ -79,12 +79,128 @@ async def setup(p, query='', locale='en-US'):
     await ctx.route('https://x.com/**', x); await ctx.route('https://local.test/**', local); await ctx.route('https://pbs.twimg.com/**', pbs)
     pg = await ctx.new_page()
     pg.on('pageerror', lambda e: st['errs'].append(str(e)))
-    await pg.goto('https://x.com/home' + query); await pg.wait_for_timeout(1500)
+    await pg.goto('https://x.com' + path + query); await pg.wait_for_timeout(1500)
     return b, ctx, pg, st
 async def ev(pg,js): return await pg.evaluate(js)
 async def ready(pg,t=20000):
     await pg.wait_for_function(f"()=>{{const l=document.querySelector('{LD}');return l&&getComputedStyle(l).display=='none'}}",timeout=t)
 async def status(pg): return (await ev(pg,"()=>document.querySelector('[class$=_status_overlay]').textContent")).strip()
+async def shown(pg, n, t=12000):
+    """Media ids of the photos in the viewer, in order (None: not loaded yet). Waits for n loaded ones; returns what is there on timeout."""
+    js = f"[...document.querySelectorAll('{OV} img.original-image')].map(i=>(i.src.match(/media\\/([^?.:]+)/)||[])[1])"
+    try:
+        await pg.wait_for_function(f"n=>{js}.filter(Boolean).length>=n", arg=n, timeout=t)
+    except PlaywrightTimeoutError:
+        pass
+    await pg.wait_for_timeout(400)
+    return await ev(pg, f"()=>{js}")
+async def viewer_open(pg):
+    return await ev(pg, f"()=>{{const c=document.querySelector('{OV}');return !!c&&getComputedStyle(c).display!='none'}}")
+async def viewer_post(pg):
+    """[post url, display name, user name] the open viewer works with."""
+    return await ev(pg, "()=>{const a=document.querySelector('a[class$=_close_overlay]');return a?[a.href,a.getAttribute('data-fullname'),a.getAttribute('data-username')]:null}")
+async def close_viewer(pg):
+    await pg.keyboard.press('Escape'); await pg.wait_for_timeout(300)
+async def buttons(pg):
+    """[article id, sits in an action bar] for every post button."""
+    return await ev(pg, """()=>[...document.querySelectorAll('.twOpenOriginalImageButton')].map(c=>{const g=c.closest('[role=group]');
+        return [c.closest('article')?.id, !!g && !!g.querySelector('[data-engagement-action="reply"]')]}).sort()""")
+def ids(post, n): return [f'{post}_{i}' for i in range(1, n + 1)]
+def cfg_query(**options): return '?cfg=' + urllib.parse.quote(json.dumps(options))
+
+async def new_client(p):
+    """x's redesigned web client: no #react-root, data-testid or <time> (fixture_new.html)."""
+    new = {'fixture': 'fixture_new.html'}
+    photo = lambda path: f'a[href="{path}"]'
+    # ---- F: timeline ----
+    b,ctx,pg,st=await setup(p,**new)
+    st['reqs'].clear()
+    await pg.click(photo('/nasa/status/111/photo/2')); await pg.wait_for_timeout(400)
+    check('F1 new client: clicking a photo opens the viewer', await viewer_open(pg))
+    nav=await ev(pg,'__nav')
+    check('F2 new client: x does not also get the click', await viewer_open(pg) and nav==[], nav)
+    got=await shown(pg,20)
+    check('F3 new client: all 20 photos, though only 4 are on the page', got==ids('111',20), (len(got),got[:5]))
+    orig=[r[1] for r in st['reqs'] if r[3]]
+    check('F4 new client: clicked photo requested first', orig[:1]==['111_2'], orig[:3])
+    info=await viewer_post(pg)
+    check('F5 new client: viewer has the post url and author', info==['https://x.com/nasa/status/111','NASA Artemis','nasa'], info)
+    link=await ev(pg,f"()=>document.querySelector('{OV} a.image-link')?.href")
+    check('F6 new client: viewer photo links point to the post', link=='https://x.com/nasa/status/111/photo/1', link)
+    await close_viewer(pg)
+    await pg.click(photo('/carol/status/666/photo/1')); got=await shown(pg,6)
+    check('F7 new client: full list from tweet.media_entities2, video skipped', got==ids('666',6), got)
+    await close_viewer(pg)
+    await ev(pg,'()=>{__nav.length=0}')
+    await pg.click('#t555 img[src*="/media/"]'); await pg.wait_for_timeout(500)
+    nav=await ev(pg,'__nav')
+    check('F8 new client: video post is left to x', not await viewer_open(pg) and nav==['/vic/status/555'], nav)
+    await close_viewer(pg)
+    await ev(pg,'()=>{__nav.length=0}')
+    await pg.click(photo('/spacex/status/222/photo/1'),modifiers=['Control']); await pg.wait_for_timeout(500)
+    nav=await ev(pg,'__nav')
+    check('F9 new client: ctrl+click is left to x', not await viewer_open(pg) and '/spacex/status/222/photo/1' in nav, nav)
+    await close_viewer(pg)
+    await ev(pg,'()=>{__nav.length=0;__xhr.length=0}')
+    await pg.click(photo('/spacex/status/222/photo/1'),modifiers=['Shift']); await pg.wait_for_timeout(1500)
+    xhr,nav=await ev(pg,'[__xhr,__nav]')
+    check('F10 new client: shift+click downloads that photo in original size', len(xhr)==1 and '/media/222_1' in xhr[0] and 'name=orig' in xhr[0] and nav==[], (xhr,nav))
+    await pg.click(photo('/spacex/status/222/photo/1')); got=await shown(pg,1)
+    check('F11 new client: photo with its own alt text', got==['222_1'], got)
+    await close_viewer(pg)
+    await ev(pg,'()=>{scrollTo(0,0);__addPost()}'); await pg.wait_for_timeout(600)
+    await pg.click(photo('/late/status/1234/photo/2')); got=await shown(pg,2)
+    check('F12 new client: post rendered later works too', got==ids('1234',2), got)
+    check('F13 new client: no page errors', not st['errs'], st['errs'][:2])
+    await b.close()
+
+    # ---- G: quote posts ----
+    b,ctx,pg,st=await setup(p,**new)
+    await pg.click(photo('/alice/status/333/photo/1')); got=await shown(pg,3)
+    check('G1 new client: quote post shows own photos, then quoted ones', got==['333_1','444_1','444_2'], got)
+    await b.close()
+    b,ctx,pg,st=await setup(p,**new)
+    st['reqs'].clear()
+    await pg.click(photo('/bob/status/444/photo/2')); got=await shown(pg,3)
+    orig=[r[1] for r in st['reqs'] if r[3]]; info=await viewer_post(pg)
+    check('G2 new client: quoted photo opens first, under the outer post', orig[:1]==['444_2'] and info==['https://x.com/alice/status/333','Alice','alice'], (orig[:2],info))
+    await close_viewer(pg)
+    await pg.click(photo('/erin/status/888/photo/1')); got=await shown(pg,1); info=await viewer_post(pg)
+    check('G3 new client: quote of a photo, outer post has none', got==['888_1'] and info==['https://x.com/dave/status/777','Dave','dave'], (got,info))
+    nav=await ev(pg,'__nav')
+    check('G4 new client: quoted photo clicks do not reach x', got==['888_1'] and nav==[], nav)
+    check('G5 new client: no page errors', not st['errs'], st['errs'][:2])
+    await b.close()
+
+    # ---- I: post button and keyboard shortcut ----
+    b,ctx,pg,st=await setup(p,cfg_query(DISPLAY_ORIGINAL_BUTTONS=True),**new)
+    await pg.wait_for_timeout(500)
+    got=await buttons(pg)
+    check('I1 new client: one button per photo post, in its action bar', got==[[a,True] for a in ['t111','t222','t333','t666','t777']], got)
+    if got:
+        await pg.click('#t666 .twOpenOriginalImageButton button')
+    shots=await shown(pg,6)
+    check('I2 new client: post button opens that post', shots==ids('666',6), shots)
+    await close_viewer(pg)
+    await ev(pg,"()=>document.querySelector('[data-href=\"/alice/status/333\"]').focus()")
+    await pg.keyboard.press('v'); shots=await shown(pg,3)
+    check('I3 new client: key v opens the focused post', shots==['333_1','444_1','444_2'], shots)
+    check('I4 new client: no page errors', not st['errs'], st['errs'][:2])
+    await b.close()
+
+    # ---- J: opened post, light theme ----
+    b,ctx,pg,st=await setup(p,'?light=1',path='/spacex/status/222',**new)
+    await pg.keyboard.press('v'); got=await shown(pg,1); info=await viewer_post(pg)
+    check('J1 status page: key v opens the opened post', got==['222_1'] and info==['https://x.com/spacex/status/222','SpaceX','spacex'], (got,info))
+    bg=await ev(pg,f"()=>{{const h=document.querySelector('{HD}');return h&&getComputedStyle(h).backgroundColor}}")
+    check('J2 status page: light mode bar is white', got==['222_1'] and bg=='rgb(255, 255, 255)', bg)
+    check('J3 status page: no page errors', not st['errs'], st['errs'][:2])
+    await b.close()
+    b,ctx,pg,st=await setup(p,path='/dave/status/777',**new)
+    await pg.click(photo('/erin/status/888/photo/1')); got=await shown(pg,1); info=await viewer_post(pg)
+    check('J4 status page: post url when only the quote has photos', got==['888_1'] and info==['https://x.com/dave/status/777','Dave','dave'], (got,info))
+    check('J5 status page: no page errors', not st['errs'], st['errs'][:2])
+    await b.close()
 
 async def main():
   async with async_playwright() as p:
@@ -203,6 +319,9 @@ async def main():
         check(f'E4 settings {theme}: Chirp font', r['font']=='TwitterChirp', r['font'])
     check('E5 no page errors', not st['errs'], st['errs'][:2])
     await b.close()
+
+    # ---- F to J: x's redesigned web client ----
+    await new_client(p)
   n=sum(ok for _,ok in R); print(f'\n{n}/{len(R)} passed')
   return n==len(R)
 

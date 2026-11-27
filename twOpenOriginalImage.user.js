@@ -4,7 +4,7 @@
 // @namespace       http://furyu.hatenablog.com/
 // @author          furyu, 13c37
 // @license         MIT
-// @version         0.1.37
+// @version         0.1.38
 // @match           https://x.com/*
 // @match           https://twitter.com/*
 // @match           https://mobile.x.com/*
@@ -170,9 +170,15 @@ var DEBUG = false,
     is_twitter = make_is_url_function( /^https?:\/\/(?:mobile\.)?(twitter|x)\.com\// ),
     is_tweetdeck = make_is_url_function( /^https?:\/\/tweetdeck\.(twitter|x)\.com\// ),
     is_media_url = make_is_url_function( /^https?:\/\/pbs\.twimg\.com\/media\// ),
+    // [2026-11] x's redesigned web client: no div#react-root / data-testid / <time>, the <html> element carries data-app-version
+    is_new_x_client = ( () => {
+        const
+            is_new_x_client = ( ! d.querySelector( 'div#react-root' ) ) && d.documentElement.hasAttribute( 'data-app-version' ) && is_twitter();
+        return () => is_new_x_client;
+    } )(),
     is_react_page = ( () => {
         const
-            is_react_page = !! d.querySelector( 'div#react-root' );
+            is_react_page = ( !! d.querySelector( 'div#react-root' ) ) || is_new_x_client();
         return () => is_react_page;
     } )(),
     is_react_twitter = ( () => {
@@ -943,6 +949,98 @@ function get_photo_urls_from_react( tweet_element ) {
 } // end of get_photo_urls_from_react()
 
 
+// [2026-11] x's redesigned web client (is_new_x_client()): a post is an <article> (a quoted post is an <article> inside it),
+// each photo is an inert <img> covered by a link to ".../status/ID/photo/N".
+const NEW_X_PHOTO_LINK_SELECTOR = 'a[href*="/status/"][href*="/photo/"]';
+
+
+function get_photo_link_on_new_x_client( img ) {
+    const article = img.closest( 'article' );
+
+    for ( let node = img.parentElement; node && ( node !== article ); node = node.parentElement ) {
+        const photo_link = node.querySelector( ':scope > ' + NEW_X_PHOTO_LINK_SELECTOR );
+        if ( photo_link ) {
+            return photo_link;
+        }
+    }
+    return null;
+} // end of get_photo_link_on_new_x_client()
+
+
+function get_photo_urls_from_new_x_client( img ) {
+    // the complete media list of the post (or of the quoted post) is kept by a react component above the photo
+    try {
+        const
+            element = img.wrappedJSObject || img, // Firefox: page-side properties are only visible through wrappedJSObject
+            fiber_key = Object.keys( element ).find( ( key ) => key.startsWith( '__reactFiber$' ) );
+
+        if ( ! fiber_key ) {
+            return [];
+        }
+        for ( let fiber = element[ fiber_key ], depth = 0; fiber && ( depth < 60 ); fiber = fiber.return, depth ++ ) {
+            const
+                props = fiber.memoizedProps,
+                media_list = props && ( props.mediaItems || ( props.tweet && props.tweet.media_entities2 ) );
+
+            if ( Array.isArray( media_list ) && media_list.some( ( media ) => media && media.media_url_https ) ) {
+                return media_list.filter( ( media ) => media && media.type == 'photo' && media.media_url_https ).map( ( media ) => get_img_url_orig( media.media_url_https ) );
+            }
+        }
+    }
+    catch ( error ) {
+        log_debug( 'get_photo_urls_from_new_x_client():', error );
+    }
+    return [];
+} // end of get_photo_urls_from_new_x_client()
+
+
+function get_tweet_link_on_new_x_client( tweet ) {
+    // returns { href } like the timestamp link of the old client
+    const
+        get_status_url = ( url ) => {
+            const match = /^\/[^\/]+\/status\/\d+\/?$/.exec( url ? new URL( url, location.href ).pathname : '' );
+            return match ? new URL( match[ 0 ].replace( /\/$/, '' ), location.href ).href : null;
+        },
+        // timeline: the post sits in a link-like wrapper
+        wrapper_url = get_status_url( tweet.parentElement && tweet.parentElement.getAttribute( 'data-href' ) );
+
+    if ( wrapper_url ) {
+        return { href : wrapper_url };
+    }
+
+    // timestamp (opened post: the date below the text)
+    const own_link = [ ... tweet.querySelectorAll( 'a[href*="/status/"]' ) ].find( ( link ) => {
+        return ( link.closest( 'article' ) === tweet ) && ( ! link.closest( 'div[lang]' ) ) && ( link.getAttribute( 'aria-hidden' ) != 'true' ) && get_status_url( link.href );
+    } );
+
+    if ( own_link ) {
+        return { href : get_status_url( own_link.href ) };
+    }
+
+    const photo_link = [ ... tweet.querySelectorAll( NEW_X_PHOTO_LINK_SELECTOR ) ].find( ( link ) => link.closest( 'article' ) === tweet );
+
+    if ( photo_link ) {
+        return { href : photo_link.href.replace( /\/photo\/\d+\/?$/, '' ) };
+    }
+    return null;
+} // end of get_tweet_link_on_new_x_client()
+
+
+function get_author_on_new_x_client( tweet ) {
+    const
+        tweet_link = get_tweet_link_on_new_x_client( tweet ),
+        username = tweet_link ? new URL( tweet_link.href ).pathname.split( '/' )[ 1 ] : '',
+        fullname_container = [ ... tweet.querySelectorAll( 'a[href] div[dir="auto"]' ) ].find( ( element ) => {
+            return ( element.closest( 'article' ) === tweet ) && ( new URL( element.closest( 'a' ).href ).pathname.replace( /\/$/, '' ).toLowerCase() == ( '/' + username ).toLowerCase() );
+        } );
+
+    return {
+        fullname : ( fullname_container ) ? get_text_from_element( fullname_container ).trim() : '',
+        username : username,
+    };
+} // end of get_author_on_new_x_client()
+
+
 function get_photo_urls_from_syndication( tweet_element ) {
     // Fallback when the React data is not reachable (e.g. strict script isolation): public embed endpoint, no login needed.
     return new Promise( ( resolve ) => {
@@ -1034,6 +1132,9 @@ function is_tweet_detail_on_react_twitter( tweet ) {
 
 
 function get_tweet_link_on_react_twitter( tweet ) {
+    if ( is_new_x_client() ) {
+        return get_tweet_link_on_new_x_client( tweet );
+    }
     var tweet_link,
         timestamp_container = tweet.querySelector( [
             'a[role="link"][href^="/"][href*="/status/"] time:last-of-type',
@@ -3231,7 +3332,10 @@ function initialize( user_options ) {
                 timestamp_container,
                 timestamp_ms;
             
-            if ( is_react_page() ) {
+            if ( is_new_x_client() ) {
+                ( { fullname, username } = get_author_on_new_x_client( tweet ) );
+            }
+            else if ( is_react_page() ) {
                 //fullname_container = tweet.querySelector( 'a[role="link"] [dir="auto"] > span > span[dir="auto"]' );
                 fullname_container = tweet.querySelector( 'a[role="link"] [dir="auto"] > span' );
                 //fullname = ( fullname_container ) ? fullname_container.textContent.trim() : '';
@@ -3984,6 +4088,11 @@ function initialize( user_options ) {
                     offset;
                 
                 try {
+                    if ( is_new_x_client() ) {
+                        // quoted photos after the post's own ones (a post can have up to 20)
+                        number = parseInt( get_photo_link_on_new_x_client( img_object ).href.replace( /^.*\/photo\//, '' ), 10 );
+                        return ( ( img_object.closest( 'article' ) === tweet ) ? 0 : 100 ) + number;
+                    }
                     number = parseInt( search_ancestor_by_attribute( img_object, 'href' ).href.replace( /^.*\/photo\//, '' ), 10 );
                     if ( is_react_page() ) {
                         //offset = ( search_ancestor_by_attribute( img_object, 'role', 'blockquote' ) ) ? 10 : 0;
@@ -4002,8 +4111,16 @@ function initialize( user_options ) {
             
             function get_img_objects( container ) {
                 var img_objects = [];
-                
-                if ( is_react_page() ) {
+
+                if ( is_new_x_client() ) {
+                    // the photo next to each photo link (alt texts and labels are not reliable: real descriptions / localized)
+                    img_objects = to_array( container.querySelectorAll( NEW_X_PHOTO_LINK_SELECTOR ) ).map( ( photo_link ) => {
+                        return photo_link.parentElement && photo_link.parentElement.querySelector( 'img[src*="//pbs.twimg.com/media/"]' );
+                    } ).filter( ( img_object ) => {
+                        return img_object && ( OPTIONS.SHOW_IMAGES_OF_QUOTE_TWEET || ( img_object.closest( 'article' ) === container ) );
+                    } ).sort( ( img_object1, img_object2 ) => get_img_number( img_object1 ) - get_img_number( img_object2 ) );
+                }
+                else if ( is_react_page() ) {
                     img_objects = to_array( container.querySelectorAll( 'div[aria-label] > img[src*="//pbs.twimg.com/media/"]' ) ).filter( ( img_object ) => {
                         if ( OPTIONS.SHOW_IMAGES_OF_QUOTE_TWEET ) {
                             return true;
@@ -4135,7 +4252,11 @@ function initialize( user_options ) {
                 img_urls = [],
                 all_img_urls = [];
             
-            if ( is_react_page() ) {
+            if ( is_new_x_client() ) {
+                // the post's own action bar (reply / repost / like ...), not the one of a nested post
+                action_list = [ ... tweet.querySelectorAll( '[role="group"]' ) ].find( group => ( group.closest( 'article' ) === tweet ) && group.querySelector( '[data-engagement-action="reply"]' ) ) || null;
+            }
+            else if ( is_react_page() ) {
                 if ( ! action_list ) {
                     if ( is_tweet_detail_on_react_twitter( tweet ) ) {
                         // Opened post: use its action bar (reply / repost / like ...) like on the timeline
@@ -4201,17 +4322,34 @@ function initialize( user_options ) {
                         all_img_urls.splice( 0, all_img_urls.length, ...merged_urls );
                     }
                 };
-                const react_photo_urls = get_photo_urls_from_react( tweet );
-                
-                if ( 0 < react_photo_urls.length ) {
-                    add_missing_photos( react_photo_urls );
+
+                if ( is_new_x_client() ) {
+                    // each post (own / quoted) has its own media list on its photos
+                    const
+                        own_img_objects = img_objects.filter( ( img_object ) => img_object.closest( 'article' ) === tweet ),
+                        levels = [ own_img_objects, img_objects.filter( ( img_object ) => img_object.closest( 'article' ) !== tweet ) ].filter( ( level ) => 0 < level.length ),
+                        level_urls = levels.map( ( level ) => get_photo_urls_from_new_x_client( level[ 0 ] ) );
+
+                    if ( level_urls.some( ( urls ) => 0 < urls.length ) ) {
+                        add_missing_photos( [].concat( ... levels.map( ( level, index ) => merge_photo_urls( level_urls[ index ], level.map( ( img_object ) => get_img_url_orig( img_object.src ) ) ) ) ) );
+                    }
+                    else if ( 4 <= own_img_objects.length ) {
+                        get_photo_urls_from_syndication( tweet ).then( add_missing_photos );
+                    }
                 }
-                else if ( 4 <= img_objects.length ) {
-                    // only posts whose grid may be truncated trigger a request
-                    get_photo_urls_from_syndication( tweet ).then( add_missing_photos );
+                else {
+                    const react_photo_urls = get_photo_urls_from_react( tweet );
+
+                    if ( 0 < react_photo_urls.length ) {
+                        add_missing_photos( react_photo_urls );
+                    }
+                    else if ( 4 <= img_objects.length ) {
+                        // only posts whose grid may be truncated trigger a request
+                        get_photo_urls_from_syndication( tweet ).then( add_missing_photos );
+                    }
                 }
             }
-            
+
             if ( is_react_page() && old_button ) {
                 if ( old_button.getAttribute( 'data-image-number' ) == img_objects.length ) {
                     log_debug( 'found old button and same image number', old_button );
@@ -4311,10 +4449,15 @@ function initialize( user_options ) {
                                 }
                             }
                             
-                            fullname_container = tweet.querySelector( 'a[role="link"] [dir="auto"] > span' );
-                            fullname = ( fullname_container ) ? get_text_from_element( fullname_container ).trim() : '';
-                            username_container = ( fullname_container ) ? search_ancestor_by_attribute( fullname_container, 'role', 'link' ) : null;
-                            username = ( username_container ) ? new URL( username_container.href ).pathname.replace( /^\//, '' ) : '';
+                            if ( is_new_x_client() ) {
+                                ( { fullname, username } = get_author_on_new_x_client( tweet ) );
+                            }
+                            else {
+                                fullname_container = tweet.querySelector( 'a[role="link"] [dir="auto"] > span' );
+                                fullname = ( fullname_container ) ? get_text_from_element( fullname_container ).trim() : '';
+                                username_container = ( fullname_container ) ? search_ancestor_by_attribute( fullname_container, 'role', 'link' ) : null;
+                                username = ( username_container ) ? new URL( username_container.href ).pathname.replace( /^\//, '' ) : '';
+                            }
                         }
                         else {
                             tweet_link = tweet.querySelector( 'a[rel="url"][href^="https://twitter.com/"],a[rel="url"][href^="/"]' );
@@ -4622,6 +4765,10 @@ function initialize( user_options ) {
                             }
                             
                             if ( ( event.shiftKey && event.altKey ) || event.ctrlKey ) {
+                                if ( is_new_x_client() ) {
+                                    // the click is on x's own photo link: just let it through
+                                    return;
+                                }
                                 // [Alt] / [option] キー押下時には、デフォルト動作を実施
                                 lock_event = true;
                                 event.preventDefault();
@@ -4656,19 +4803,22 @@ function initialize( user_options ) {
                     } )(); // end of open_target_image()
                     
                     
+                    // new x client: the <img> is inert and covered by a photo link, so the link gets the click
+                    var click_target = ( is_new_x_client() && get_photo_link_on_new_x_client( img ) ) || img;
+
                     function remove_image_events( event ) {
                         remove_event( img, 'remove-image-events', remove_image_events );
-                        remove_event( img, 'click', open_target_image );
+                        remove_event( click_target, 'click', open_target_image );
                         img.classList.remove( SCRIPT_NAME + '_touched' );
                     } // end of remove_image_events()
-                    
-                    
+
+
                     if ( ! has_some_classes( img, 'med-origlink' ) ) {
-                        add_event( img, 'click', open_target_image );
+                        add_event( click_target, 'click', open_target_image );
                         add_event( img, 'remove-image-events', remove_image_events );
                     }
-                    
-                    if ( img.classList.contains( 'media-image' ) || is_react_page() ) {
+
+                    if ( img.classList.contains( 'media-image' ) || ( is_react_page() && ( ! is_new_x_client() ) ) ) {
                         img.style.pointerEvents = 'auto';
                     }
                     
@@ -4704,7 +4854,21 @@ function initialize( user_options ) {
             tweet,
             ancestor;
         
-        if ( is_react_page() ) {
+        if ( is_new_x_client() ) {
+            // top-level posts only (a quoted post is handled with the post that quotes it)
+            tweet_list = to_array( node.querySelectorAll( 'article' ) ).filter( ( article ) => {
+                if ( article.parentElement && article.parentElement.closest( 'article' ) ) {
+                    return false;
+                }
+                if ( ! article.querySelector( NEW_X_PHOTO_LINK_SELECTOR ) ) {
+                    return false;
+                }
+                return ( !! add_open_button( article ) );
+            } );
+
+            log_debug( '*** added button number: ', tweet_list.length );
+        }
+        else if ( is_react_page() ) {
             const
                article_selector = is_react_tweetdeck() ? 'div[data-testid="cellInnerDiv"] article[role="article"]' : 'div[data-testid="primaryColumn"] article[role="article"]';
                
@@ -5008,8 +5172,36 @@ function initialize( user_options ) {
         var gallery,
             target_tweet,
             button;
-        
-        if ( is_react_tweetdeck() ) {
+
+        if ( is_new_x_client() ) {
+            const
+                top_article = ( element ) => {
+                    let article = element && element.closest( 'article' );
+                    while ( article && article.parentElement && article.parentElement.closest( 'article' ) ) {
+                        article = article.parentElement.closest( 'article' );
+                    }
+                    return article;
+                },
+                active_element = d.activeElement,
+                tweet_id = get_tweet_id_from_tweet_url( location.href ),
+                top_articles = to_array( d.querySelectorAll( 'article' ) ).filter( ( article ) => ! ( article.parentElement && article.parentElement.closest( 'article' ) ) );
+
+            // 1. the focused post, 2. the opened post (status page), 3. the first post with a button
+            if ( active_element && ( active_element !== d.body ) ) {
+                target_tweet = top_article( active_element ) || top_article( active_element.querySelector( 'article' ) );
+            }
+            if ( ( ! get_button( target_tweet ) ) && tweet_id ) {
+                target_tweet = top_articles.find( ( article ) => {
+                    const tweet_link = get_tweet_link_on_new_x_client( article );
+                    return tweet_link && ( get_tweet_id_from_tweet_url( tweet_link.href ) == tweet_id ) && get_button( article );
+                } );
+            }
+            if ( ! get_button( target_tweet ) ) {
+                target_tweet = top_articles.find( ( article ) => get_button( article ) );
+            }
+            button = get_button( target_tweet );
+        }
+        else if ( is_react_tweetdeck() ) {
             target_tweet = d.querySelector( 'article[role="article"][data-testid="tweet"][data-focusvisible-polyfill="true"]' );
             if ( target_tweet ) {
                 button = get_button( target_tweet );
